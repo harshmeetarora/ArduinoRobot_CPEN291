@@ -6,6 +6,7 @@
 #define MAXSPEED 100
 #define MAXDISTANCE 400 // in cm
 #define MINDISTANCE 10  // in cm
+#define SWITCH 1   // Used to pick with mode
 
 Servo servo;
 
@@ -21,14 +22,14 @@ void setup() {
   pinMode(TRIG, OUTPUT);
   pinMode(ECHO, INPUT); 
   servo.write(90);
+  pinMode(SWITCH, INPUT);
 }
 
 void loop() {
-  
+  digitalRead(SWITCH) ? function1() : function2();
 }
 
 // Defines behaviour as detailed in lab handout
-// 
 void function1(){
   distance = readDistance();
   if(distance>=400){
@@ -39,7 +40,7 @@ void function1(){
   if (robotSpeed < 0.01){
     robotSpeed = 0;
     char newDirection = servoScan();
-    newDirection == L ? turnLeft() : turnRight();
+    newDirection == 'L' ? turnLeft() : turnRight();
   }
 }
 
@@ -52,7 +53,7 @@ char servoScan(){
   delay(400);
   float newDist2 = readDistance();
   servo.write(90);
-  return (newDist1 >= newDist2) ? L : R;
+  return (newDist1 >= newDist2) ? 'L' : 'R';
 }
 
 float readDistance(){
@@ -74,5 +75,19 @@ float readDistance(){
 float readTemperature() {
   float t = analogRead(LM);
   return 0.48828125 * t;
+}
+
+// Turns robot 90* left
+void turnLeft(){
+
+}
+
+// Turns robot 90* right
+void turnRight(){
+  
+}
+
+void function2(){
+  
 }
 
