@@ -1,9 +1,4 @@
-/* Firmware for Elsa
-   Author: Vincent Yuan, 
-   Modified: Nick Wu
-   Modified: James Asefa
-   Date Last Modified: Oct 30, 2016
-*/
+
 
 #include <SoftwareSerial.h>
 #include <stdlib.h>
