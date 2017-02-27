@@ -1,0 +1,10 @@
+- https://arduino.stackexchange.com/questions/16348/how-do-you-use-spi-on-an-arduino
+- file:///Users/jamesasefa/Downloads/nRF8001_PS_v1.3.pdf
+- https://learn.sparkfun.com/tutorials/serial-peripheral-interface-spi
+- https://github.com/adafruit/Bluefruit_LE_Connect
+- https://github.com/adafruit/Adafruit_nRF8001
+- https://github.com/LessonStudio/Arduino_BLE_iOS_CPP
+- https://github.com/hoiberg/HM10-BluetoothSerial-iOS
+- https://www.raywenderlich.com/85900/arduino-tutorial-integrating-bluetooth-le-ios-swift
+- https://developer.apple.com/library/content/documentation/NetworkingInternetWeb/Conceptual/CoreBluetooth_concepts/AboutCoreBluetooth/Introduction.html#//apple_ref/doc/uid/TP40013257-CH1-SW1
+- https://learn.adafruit.com/getting-started-with-the-nrf8001-bluefruit-le-breakout/introduction
