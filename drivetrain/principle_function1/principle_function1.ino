@@ -11,6 +11,7 @@
 #define topSpeed 255
 
 int mode = 0;
+int currentSpeed = 0;
 
 void setup()
 {
@@ -18,11 +19,17 @@ void setup()
   // acquire motor pinmodes
   pinMode(M1, OUTPUT);
   pinMode(M2, OUTPUT);
+
+  // acquire the mode from keypad 
+  mode = acquireMode();
 }
 
 void loop()
 {
   // acquire the mode from keypad
+  // if a button (decide on it later) is pressed, reaquire mode 
+  mode = acquireMode();
+  
   // 1 for principle functionality 1
   // 2 for principle functionality 2
   // 3 for the remote control with the bluetooth application
@@ -41,20 +48,46 @@ void loop()
  
 }
 
+/*
+ * Moves robot in a straight line until an object is encountered 
+ * Then, turns robot left or right
+ * Finally, proceeds in the new direction
+ */
 void functionality1()
 {
+  // enable and the motors in a straight line at top speed 
   enableMotors();
   runTopSpeed();
+  if (detectObject()){
+    // slow down the robot gradually
+    
+  }
+  
+  
 }
 
+/*
+ * Moves the robot on a flat surface while following a strip
+ * of black electrical tape, turning if necessary
+ */
 void functionality2()
 {
   enableMotors();
+  
 }
 
+/*
+ * Moves according to commands sent from a bluetooth iOS application
+ */
 void functionality3()
 {
   enableMotors();
+  //add bluetooth functionality here
+}
+
+int acquireMode()
+{
+  // add the keypad and LCD prompt here
 }
 
 void enableMotors()
@@ -65,9 +98,21 @@ void enableMotors()
 
 void runTopSpeed()
 {
+  currentSpeed = topSpeed;
   analogWrite(M1, topSpeed);
   analogWrite(M2, topSpeed);
+  evaluateHallSensors();
 }
+
+int detectObject()
+{
+  //detect if there's an object using the ultrasonic sensor  
+}
+void evaluateHallSensors()
+{
+  // check hall effect and adjust accordingly
+}
+
 
 
 
