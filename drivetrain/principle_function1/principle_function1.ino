@@ -87,17 +87,18 @@ void loop()
  * Then, turns robot left or right
  * Finally, proceeds in the new direction
  */
-void functionality1()
-{
-  // enable and run the motors in a straight line at top speed 
-  enableMotors();
-  runTopSpeed();
-  if (detectObject()){
-    // slow down the robot gradually
-    //slowDown();
+void function1(){
+  distance = readDistance();
+  if(distance>=400){
+    robotSpeed = MAXSPEED;
+  } else { 
+    robotSpeed = speedSlope*(distance - MINDISTANCE);
   }
-  
-  
+  if (robotSpeed < 0.01){
+    robotSpeed = 0;
+    char newDirection = servoScan();
+    newDirection == 'L' ? turnLeft() : turnRight();
+  }
 }
 
 /*
