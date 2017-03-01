@@ -124,10 +124,10 @@ int acquireMode()
   // add the keypad and LCD prompt here
 }
 
-void enableMotors()
+void enableMotors(int setting1, int setting2)
 {
-  digitalWrite(E1, HIGH);
-  digitalWrite(E2, HIGH);
+  digitalWrite(E1, setting1);
+  digitalWrite(E2, setting2);
 }
 
 void runTopSpeed()
@@ -136,6 +136,11 @@ void runTopSpeed()
   analogWrite(M1, topSpeed);
   analogWrite(M2, topSpeed);
   evaluateHallSensors();
+}
+
+void setSpeed(int speed1, int speed2){
+  analogWrite(M1, speed1);
+  analogWrite(M2, speed2);
 }
 
 int detectObject()
