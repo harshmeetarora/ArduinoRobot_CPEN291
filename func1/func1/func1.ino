@@ -4,7 +4,7 @@
 #define ECHO 5
 #define LM A0
 #define MAXSPEED 100
-#define MAXDISTANCE 400 // in cm
+#define MAXDISTANCE 100 // in cm
 #define MINDISTANCE 10  // in cm
 #define SWITCH 1   // Used to pick with mode
 
@@ -32,7 +32,8 @@ void loop() {
 // Defines behaviour as detailed in lab handout
 void function1(){
   distance = readDistance();
-  if(distance>=400){
+  Serial.println(distance);
+  if(distance>=MAXDISTANCE){
     robotSpeed = MAXSPEED;
   } else { 
     robotSpeed = speedSlope*(distance - MINDISTANCE);

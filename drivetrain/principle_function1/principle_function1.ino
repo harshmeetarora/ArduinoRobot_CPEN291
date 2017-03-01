@@ -6,16 +6,26 @@
 //include the servo motor library 
 #include <Servo.h>
 
-//Initialize the ports for functionality 1
+//Initialize the pins for functionality 1
 #define SERVOPIN 1
 #define TRIG 2
 #define ECHO 3
 #define LM A0
-#define MAXSPEED 100
+
+// functionality 1 constants
 #define MAXDISTANCE 400 // in cm
 #define MINDISTANCE 10  // in cm
-//#define SWITCH 1   // Used to pick with mode    //change to keypad input
+
+// Switches for reading mode:
+#define SWITCH1 8   
+#define SWITCH2 9
  
+// Modes: 
+#define OFF 0   // 0 is "off"
+#define PF1 1   // 1 for principle functionality 1
+#define PF2 2   // 2 for principle functionality 2
+#define BT  3    // 3 for the remote control with the bluetooth application
+
 //Initialize the motor PWM speed control ports
 #define M1 4
 #define E1 5
@@ -29,7 +39,7 @@ int currentSpeed = 0;
 int pos; // servo arm angle
 float distance; // distance read by the rangefinder
 float robotSpeed = 0;
-float speedSlope = MAXSPEED/(MAXDISTANCE-MINDISTANCE);
+float speedSlope = topSpeed/(MAXDISTANCE-MINDISTANCE);
 int robotDirection;
 
 //Initialize a servo motor object
@@ -54,32 +64,29 @@ void setup()
   //set initial direction of sevo
   servo.write(90);
 
-  // acquire the mode from keypad 
-  mode = acquireMode();
+  // acquire the mode from buttons 
+  acquireMode();
 }
 
 void loop()
 {
-  // acquire the mode from keypad
-  // if a button (decide on it later) is pressed, reaquire mode 
-  mode = acquireMode();
-  
-  // 1 for principle functionality 1
-  // 2 for principle functionality 2
-  // 3 for the remote control with the bluetooth application
-  if (mode == 1)
+  // acquire the mode from buttons
+  // check state of 2 buttons for 4 modes
+  acquireMode();
+
+  if (mode == PF1)
   {
     functionality1();
   }
-  else if (mode == 2)
+  else if (mode == PF2)
   {
     functionality2();
   }
-  else if (mode == 3)
+  else if (mode == BT)
   {
     functionality3();
   }
- 
+  drive();
 }
 
 /*
@@ -87,10 +94,10 @@ void loop()
  * Then, turns robot left or right
  * Finally, proceeds in the new direction
  */
-void function1(){
+void functionality1(){
   distance = readDistance();
   if(distance>=400){
-    robotSpeed = MAXSPEED;
+    robotSpeed = topSpeed;
   } else { 
     robotSpeed = speedSlope*(distance - MINDISTANCE);
   }
@@ -120,9 +127,11 @@ void functionality3()
   //add bluetooth functionality here
 }
 
-int acquireMode()
+// Reads 2 switches and sets mode accordingly
+void acquireMode()
 {
-  // add the keypad and LCD prompt here
+  (SWITCH1 && SWITCH2) ? mode = 3 : SWITCH1 ? mode = 1 : 
+    SWITCH2 ? mode = 2 : mode = 0;
 }
 
 void enableMotors()
@@ -139,10 +148,6 @@ void runTopSpeed()
   evaluateHallSensors();
 }
 
-int detectObject()
-{
-  //detect if there's an object using the ultrasonic sensor  
-}
 void evaluateHallSensors()
 {
   // check hall effect and adjust accordingly
@@ -169,6 +174,18 @@ float readTemperature() {
   return 0.48828125 * t;
 }
 
+// Scans left and right to determine which offers more space
+char servoScan(){
+  servo.write(0);
+  delay(200);
+  float newDist1 = readDistance();
+  servo.write(180);
+  delay(400);
+  float newDist2 = readDistance();
+  servo.write(90);
+  return (newDist1 >= newDist2) ? 'L' : 'R';
+}
+
 // Turns robot 90* left
 void turnLeft(){
 
@@ -179,4 +196,8 @@ void turnRight(){
   
 }
 
+// Motors apply global speed/direction variables
+void drive(){
+  
+}
 
