@@ -27,10 +27,10 @@
 #define BT  3    // 3 for the remote control with the bluetooth application
 
 //Initialize the motor PWM speed control ports
-#define M1 4
-#define E1 5
-#define E2 6
-#define M2 7 
+#define rightMotor 4
+#define enableRightMotor 5
+#define enableLeftMotor 6
+#define leftMotor 7 
 #define topSpeed 255
 
 //Initialize the global variables
@@ -38,9 +38,9 @@ int mode = 0;
 int currentSpeed = 0;
 int pos; // servo arm angle
 float distance; // distance read by the rangefinder
-float robotSpeed = 0;
+float robotLinearSpeed = 0;
 float speedSlope = topSpeed/(MAXDISTANCE-MINDISTANCE);
-int robotDirection;
+int robotAngularSpeed; // Ask Jamie... 
 
 //Initialize a servo motor object
 Servo servo;
@@ -52,8 +52,8 @@ void setup()
   
   // acquire pinmodes of all sensors
   // acquire motor pinmodes
-  pinMode(M1, OUTPUT);
-  pinMode(M2, OUTPUT);
+  pinMode(rightMotor, OUTPUT);
+  pinMode(leftMotor, OUTPUT);
 
   //acquire sensor pinmodes 
   pinMode(TRIG, OUTPUT);
@@ -73,7 +73,6 @@ void loop()
   // acquire the mode from buttons
   // check state of 2 buttons for 4 modes
   acquireMode();
-
   if (mode == PF1)
   {
     functionality1();
@@ -97,12 +96,12 @@ void loop()
 void functionality1(){
   distance = readDistance();
   if(distance>=400){
-    robotSpeed = topSpeed;
+    robotLinearSpeed = topSpeed;
   } else { 
-    robotSpeed = speedSlope*(distance - MINDISTANCE);
+    robotLinearSpeed = speedSlope*(distance - MINDISTANCE);
   }
-  if (robotSpeed < 0.01){
-    robotSpeed = 0;
+  if (robotLinearSpeed < 0.01){
+    robotLinearSpeed = 0;
     char newDirection = servoScan();
     newDirection == 'L' ? turnLeft() : turnRight();
   }
@@ -114,7 +113,6 @@ void functionality1(){
  */
 void functionality2()
 {
-  enableMotors();
   
 }
 
@@ -123,7 +121,6 @@ void functionality2()
  */
 void functionality3()
 {
-  enableMotors();
   //add bluetooth functionality here
 }
 
@@ -134,23 +131,27 @@ void acquireMode()
     SWITCH2 ? mode = 2 : mode = 0;
 }
 
-void enableMotors(int setting1, int setting2)
+// Sets motor direction
+void setMotorDirection(int right, int left)
 {
-  digitalWrite(E1, setting1);
-  digitalWrite(E2, setting2);
+  if(right) {
+    digitalWrite(enableRightMotor, HIGH); 
+  } else {
+    digitalWrite(enableRightMotor, LOW); 
+  }
+  if(left) {
+    digitalWrite(enableLeftMotor, HIGH); 
+  } else {
+    digitalWrite(enableLeftMotor, LOW); 
+  }
 }
 
 void runTopSpeed()
 {
   currentSpeed = topSpeed;
-  analogWrite(M1, topSpeed);
-  analogWrite(M2, topSpeed);
+  analogWrite(rightMotor, topSpeed);
+  analogWrite(leftMotor, topSpeed);
   evaluateHallSensors();
-}
-
-void setSpeed(int speed1, int speed2){
-  analogWrite(M1, speed1);
-  analogWrite(M2, speed2);
 }
 
 void evaluateHallSensors()
@@ -193,7 +194,11 @@ char servoScan(){
 
 // Turns robot 90* left
 void turnLeft(){
-
+  setMotorDirection(0,1);
+  analogWrite(leftMotor, 50);
+  analogWrite(leftMotor, 50);
+  delay(1000);
+  fullStop();
 }
 
 // Turns robot 90* right
@@ -203,6 +208,12 @@ void turnRight(){
 
 // Motors apply global speed/direction variables
 void drive(){
-  
+  // This function will use "setMotorDirection"
 }
+
+void fullStop(){
+  analogWrite(leftMotor, 0);
+  analogWrite(rightMotor, 0);
+}
+
 
