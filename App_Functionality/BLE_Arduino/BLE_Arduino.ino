@@ -67,7 +67,7 @@ void loop() {
     // OK while we still have something to read, get a character and print it out
     while (BTLEserial.available()) {
       int c = (int) BTLEserial.read();
-      if (c == 255) {
+      if (c == 255) { 
         negative_data_count++;
       } else {
         if (negative_data_count != 0) {
@@ -77,44 +77,5 @@ void loop() {
         Serial.println(c);
       }
     }
-
-    // Next up, see if we have any data to get from the Serial console
-
-    if (Serial.available()) {
-      // Read a line from Serial
-      Serial.setTimeout(100); // 100 millisecond timeout
-      String s = Serial.readString();
-
-      // We need to convert the line to bytes, no more than 20 at this time
-      uint8_t sendbuffer[20];
-      s.getBytes(sendbuffer, 20);
-      char sendbuffersize = min(20, s.length());
-
-      Serial.print(F("\n* Sending -> \"")); Serial.print((char *)sendbuffer); Serial.println("\"");
-
-      // write the data
-      BTLEserial.write(sendbuffer, sendbuffersize);
-    }
   }
 }
-
-/*void ISR(void){
-  // write REQ pin low to begin transaction
-  digitalWrite(slaveSelectPin, LOW);
-  //  send in the address and value via SPI:
-  - Byte 1 (debug byte) from nRF8001 is an internal debug byte and the application
-  controller discards it.
-  - Byte 2 (length byte) from nRF8001 defines the length of the message.
-  - Byte 3 (ACI byte1) is the first byte of the ACI data.
-  - Byte N is the last byte of the ACI data.
-  // write REQ pin low to end transaction
-  digitalWrite(slaveSelectPin, HIGH);
-}
-
-void readBLEData(void) {
-  if(timer>0 && timer<interrupt_time){
-    BLEChar = digitalRead(A0);
-  } else {
-    photocellValue = OFF_THRESHOLD+1;
-  }
-}*/
