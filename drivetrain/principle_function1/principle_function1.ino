@@ -7,9 +7,9 @@
 #include <Servo.h>
 
 //Initialize the ports for functionality 1
-#define SERVOPIN 2
-#define TRIG 4     //change
-#define ECHO 5     //change
+#define SERVOPIN 1
+#define TRIG 2
+#define ECHO 3
 #define LM A0
 #define MAXSPEED 100
 #define MAXDISTANCE 400 // in cm
