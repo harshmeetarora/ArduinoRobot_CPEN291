@@ -134,10 +134,10 @@ void acquireMode()
     SWITCH2 ? mode = 2 : mode = 0;
 }
 
-void enableMotors()
+void enableMotors(int setting1, int setting2)
 {
-  digitalWrite(E1, HIGH);
-  digitalWrite(E2, HIGH);
+  digitalWrite(E1, setting1);
+  digitalWrite(E2, setting2);
 }
 
 void runTopSpeed()
@@ -148,6 +148,18 @@ void runTopSpeed()
   evaluateHallSensors();
 }
 
+<<<<<<< HEAD
+=======
+void setSpeed(int speed1, int speed2){
+  analogWrite(M1, speed1);
+  analogWrite(M2, speed2);
+}
+
+int detectObject()
+{
+  //detect if there's an object using the ultrasonic sensor  
+}
+>>>>>>> 8e2b56917d213221eb5df29eb2dd61b67d2948ea
 void evaluateHallSensors()
 {
   // check hall effect and adjust accordingly
