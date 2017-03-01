@@ -156,7 +156,7 @@ void runTopSpeed()
 
 void evaluateHallSensors()
 {
-  // check hall effect and adjust accordingly
+  // check actual wheel speed and adjust power levels accordingly
 }
 
 float readDistance(){
@@ -203,12 +203,17 @@ void turnLeft(){
 
 // Turns robot 90* right
 void turnRight(){
-  
+  setMotorDirection(1,0);
+  analogWrite(leftMotor, 50);
+  analogWrite(leftMotor, 50);
+  delay(1000);
+  fullStop();
 }
 
-// Motors apply global speed/direction variables
+// Motors read global speed/direction variables
+// and are written to accordingly
 void drive(){
-  // This function will use "setMotorDirection"
+  
 }
 
 void fullStop(){
