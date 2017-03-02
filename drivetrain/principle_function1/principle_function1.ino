@@ -209,7 +209,9 @@ void turnRight(){
 }
 
 // Motors read global speed/direction variables
-// and are written to accordingly
+// angle -90 to 90
+// angle < 0 is left
+// angle > 0 is right
 void drive(){
   digitalWrite(rightMotor, HIGH); 
   digitalWrite(leftMotor, HIGH);
