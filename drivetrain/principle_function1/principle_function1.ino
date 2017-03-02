@@ -7,14 +7,14 @@
 #include <Servo.h>
 
 //Initialize the pins for functionality 1
-#define SERVOPIN 1
+#define SERVOPIN 10
 #define TRIG 2
 #define ECHO 3
-#define LM A0
+#define LM A5
 
 // functionality 1 constants
-#define MAXDISTANCE 400 // in cm
-#define MINDISTANCE 10  // in cm
+#define MAXDISTANCE 400.0 // in cm
+#define MINDISTANCE 10.0  // in cm
 
 // Switches for reading mode:
 #define SWITCH1 8   
@@ -27,11 +27,11 @@
 #define BT  3    // 3 for the remote control with the bluetooth application
 
 //Initialize the motor PWM speed control ports
-#define rightMotor 4
-#define enableRightMotor 5
-#define enableLeftMotor 6
-#define leftMotor 7 
-#define topSpeed 255
+#define enableRightMotor 4
+#define rightMotor 5
+#define enableLeftMotor 7
+#define leftMotor 6
+#define topSpeed 255.0
 
 //Initialize the global variables
 int mode = 0;
@@ -95,14 +95,18 @@ void loop()
  */
 void functionality1(){
   distance = readDistance();
+  Serial.println(distance);
   if(distance>=400){
     robotLinearSpeed = topSpeed;
   } else { 
     robotLinearSpeed = speedSlope*(distance - MINDISTANCE);
   }
-  if (robotLinearSpeed < 0.01){
+  Serial.println(robotLinearSpeed);
+ if (robotLinearSpeed < 0.1){
     robotLinearSpeed = 0;
+    fullStop();
     char newDirection = servoScan();
+    Serial.println(newDirection);
     newDirection == 'L' ? turnLeft() : turnRight();
   }
 }
@@ -126,32 +130,26 @@ void functionality3()
 
 // Reads 2 switches and sets mode accordingly
 void acquireMode()
-{
+{ /*
   (SWITCH1 && SWITCH2) ? mode = 3 : SWITCH1 ? mode = 1 : 
     SWITCH2 ? mode = 2 : mode = 0;
+   */ // Commented out just for testing PF1
+   mode = 1;
 }
 
 // Sets motor direction
 void setMotorDirection(int right, int left)
 {
   if(right) {
-    digitalWrite(enableRightMotor, HIGH); 
+    digitalWrite(rightMotor, HIGH); 
   } else {
-    digitalWrite(enableRightMotor, LOW); 
+    digitalWrite(rightMotor, LOW); 
   }
   if(left) {
-    digitalWrite(enableLeftMotor, HIGH); 
+    digitalWrite(leftMotor, HIGH); 
   } else {
-    digitalWrite(enableLeftMotor, LOW); 
-  }
-}
-
-void runTopSpeed()
-{
-  currentSpeed = topSpeed;
-  analogWrite(rightMotor, topSpeed);
-  analogWrite(leftMotor, topSpeed);
-  evaluateHallSensors();
+    digitalWrite(leftMotor, LOW); 
+  }   
 }
 
 void evaluateHallSensors()
@@ -183,10 +181,10 @@ float readTemperature() {
 // Scans left and right to determine which offers more space
 char servoScan(){
   servo.write(0);
-  delay(200);
+  delay(400);
   float newDist1 = readDistance();
   servo.write(180);
-  delay(400);
+  delay(800);
   float newDist2 = readDistance();
   servo.write(90);
   return (newDist1 >= newDist2) ? 'L' : 'R';
@@ -195,30 +193,33 @@ char servoScan(){
 // Turns robot 90* left
 void turnLeft(){
   setMotorDirection(0,1);
-  analogWrite(leftMotor, 50);
-  analogWrite(leftMotor, 50);
-  delay(1000);
+  analogWrite(enableLeftMotor, 80);
+  analogWrite(enableRightMotor, 80);
+  delay(1800);
   fullStop();
 }
 
 // Turns robot 90* right
 void turnRight(){
   setMotorDirection(1,0);
-  analogWrite(leftMotor, 50);
-  analogWrite(leftMotor, 50);
-  delay(1000);
+  analogWrite(enableLeftMotor, 80);
+  analogWrite(enableRightMotor, 80);
+  delay(1800);
   fullStop();
 }
 
 // Motors read global speed/direction variables
 // and are written to accordingly
 void drive(){
-  
+  digitalWrite(rightMotor, HIGH); 
+  digitalWrite(leftMotor, HIGH);
+  analogWrite(enableLeftMotor, robotLinearSpeed);
+  analogWrite(enableRightMotor, robotLinearSpeed);
 }
 
 void fullStop(){
-  analogWrite(leftMotor, 0);
-  analogWrite(rightMotor, 0);
+  digitalWrite(leftMotor, LOW);
+  digitalWrite(rightMotor, LOW);
 }
 
 
