@@ -16,6 +16,8 @@
 // Switches for reading mode:
 #define SWITCH1 8   
 #define SWITCH2 9
+
+
  
 // Modes: 
 #define OFF 0   // 0 is "off"
@@ -33,6 +35,8 @@
 #define ADAFRUITBLE_REQ 10
 #define ADAFRUITBLE_RDY 2     // This should be an interrupt pin, on Uno thats #2 or #3
 #define ADAFRUITBLE_RST 9
+
+
 
 //Initialize the global variables
 int mode = 0;
@@ -96,45 +100,24 @@ void loop() {
   }
 
   if (status == ACI_EVT_CONNECTED) {
-    // Lets see if there's any data for us!
-    if (BTLEserial.available()) {
-      //Serial.print("* "); Serial.print(BTLEserial.available()); Serial.println(F(" bytes available from BTLE"));
-    }
-    // OK while we still have something to read, get a character and print it out
-    while (BTLEserial.available()) {
-      int byte1 = (int) BTLEserial.read();
-      if (c == 255) { 
-        negative_data_count++;
-      } else {
-        if (negative_data_count != 0) { // if we have received a leading negative byte from the BLE connection
-          c = -c; // convert this value to its negative
-          negative_data_count--; // decrement # of leading negative bytes we still have to process (should be 0, 1 or 2)
-          allocateCToXYCoordinates(c);
-        } else {
-          allocateCToXYCoordinates(c);
-        }
-        Serial.println(c);
+    // Read every 4 values (negativeX, negativeY, x, y)
+    // negativeX and negativeY are flags indicating x and y should be negative
+    
+    if (BTLEserial.available() == 4) {
+      int negativeX = BTLEserial.read();
+      int negativeY = BTLEserial.read();
+      
+      xCoordinate = BTLEserial.read();
+      yCoordinate = BTLEserial.read();
+        
+      if (negativeX) {
+        xCoordinate = -xCoordinate;
+      }  
+      
+      if (negativeY) {
+        yCoordinate = -yCoordinate;
       }
     }
-  }
-}
-
-void allocateCToXYCoordinates(int c) {
-  if (!xread && !yread) { // if we haven't read any values yet
-    xCoordinate = -c;
-    xread = !xread; // we read x coordinate first to establish convention
-  } else if (xread && !yread) {
-    // we just read a x value
-    yCoordinate = -c;
-    yread = !yread;
-    xread = !xread; 
-  } else if (!xread && yread) {
-    // we just read a y value
-    xCoordinate = -c;
-    xread = !xread;
-    yread = !yread;
-  } else {  
-    Serial.println("ERROR!"); // we're out of order
   }
 }
 
