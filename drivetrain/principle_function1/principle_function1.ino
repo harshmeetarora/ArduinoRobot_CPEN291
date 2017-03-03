@@ -271,21 +271,6 @@ void writeToMotors(float turnSpeed, int angle){
     analogWrite(leftMotor, turnSpeed);
     analogWrite(rightMotor, turnSpeed);
   }
-=======
-void drive(){
-  digitalWrite(rightMotor, HIGH); 
-  digitalWrite(leftMotor, HIGH);
-  analogWrite(enableLeftMotor, robotLinearSpeed);
-  analogWrite(enableRightMotor, robotLinearSpeed);
->>>>>>> b126d1aca0b75f5121b043d4a0275315acb0bbf2
 }
-
-
-void fullStop(){
-  digitalWrite(leftMotor, LOW);
-  digitalWrite(rightMotor, LOW);
-}
-
-
 
 
