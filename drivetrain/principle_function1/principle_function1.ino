@@ -6,6 +6,8 @@
 //include the servo motor library 
 #include <Servo.h>
 
+//#define PI 3.14159265358979323846
+
 //Initialize the pins for functionality 1
 #define SERVOPIN 10
 #define TRIG 2
@@ -66,26 +68,31 @@ void setup()
 
   // acquire the mode from buttons 
   acquireMode();
+  drive(0, 0);
 }
 
 void loop()
 {
+  drive(50, 90);
+  drive(50, 0);
+  
+  delay(500000);
   // acquire the mode from buttons
   // check state of 2 buttons for 4 modes
-  acquireMode();
-  if (mode == PF1)
-  {
-    functionality1();
-  }
-  else if (mode == PF2)
-  {
-    functionality2();
-  }
-  else if (mode == BT)
-  {
-    functionality3();
-  }
-  drive();
+//  acquireMode();
+//  if (mode == PF1)
+//  {
+//    functionality1();
+//  }
+//  else if (mode == PF2)
+//  {
+//    functionality2();
+//  }
+//  else if (mode == BT)
+//  {
+//    functionality3();
+//  }
+//  drive();
 }
 
 /*
@@ -212,16 +219,58 @@ void turnRight(){
 // angle -90 to 90
 // angle < 0 is left
 // angle > 0 is right
-void drive(){
-  digitalWrite(rightMotor, HIGH); 
-  digitalWrite(leftMotor, HIGH);
-  analogWrite(enableLeftMotor, robotLinearSpeed);
-  analogWrite(enableRightMotor, robotLinearSpeed);
+<<<<<<< HEAD
+void drive(float forwardSpeed, float angle){
+  if (angle >= -90.0 && angle <= 90.0) 
+  {
+    
+    float motorSpeed = map(forwardSpeed, 0, 255, 0, 61);
+    //find the arc length -- the diameter of the robot is 17cm
+    float distance = abs((angle/360.0)) * (PI*17.0);
+    float travelTime = (distance) / motorSpeed;
+    Serial.println("travelTime: ");
+    Serial.println(travelTime);
+
+    Serial.println("distance: ");
+    Serial.println(distance);
+
+     
+    writeToMotors(forwardSpeed, angle);
+  
+    // time = distance / speed. so, delay to allow full turn
+    delay(travelTime * 1000); //now in milliseconds
+    
+    //delay(5000); //now in milliseconds
+  } 
+  else 
+  {
+    Serial.print("The angle is out of the set range\n");
+  }
 }
 
-void fullStop(){
-  digitalWrite(leftMotor, LOW);
-  digitalWrite(rightMotor, LOW);
+
+/*
+ * Turns one motor only at the given speed according to the given angle
+ */
+void writeToMotors(float turnSpeed, int angle){
+  if (angle < 0){
+    setMotorDirection(0,1);
+    analogWrite(leftMotor, 0);
+    analogWrite(rightMotor, turnSpeed);
+    //delay(1000);
+   // fullStop();
+  } else if (angle > 0){
+    setMotorDirection(1,0);
+    analogWrite(rightMotor, turnSpeed);
+    analogWrite(leftMotor, 0);
+    //delay(1000);
+   // fullStop();
+  } else {
+    // proceed with both motors at the required speed
+    setMotorDirection(1,1);
+    analogWrite(leftMotor, turnSpeed);
+    analogWrite(rightMotor, turnSpeed);
+  }
 }
 
 
