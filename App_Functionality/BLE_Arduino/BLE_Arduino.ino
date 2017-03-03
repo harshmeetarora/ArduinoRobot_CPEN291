@@ -1,7 +1,7 @@
 #include <SPI.h>
 #include "Adafruit_BLE_UART.h"
-#include <math.h>
 #include <Servo.h>
+//#include <math.h>
 
 //Initialize the pins for functionality 1
 #define SERVOPIN 1
@@ -36,37 +36,24 @@
 #define ADAFRUITBLE_RDY 2     // This should be an interrupt pin, on Uno thats #2 or #3
 #define ADAFRUITBLE_RST 9
 
-
-
 //Initialize the global variables
 int mode = 0;
 int currentSpeed = 0;
 int pos; // servo arm angle
 float distance; // distance read by the rangefinder
 float robotLinearSpeed = 0;
-float speedSlope = topSpeed/(MAXDISTANCE-MINDISTANCE);
-float robotAngularSpeed; // Ask Jamie... 
+float speedSlope = topSpeed/(MAXDISTANCE-MINDISTANCE); 
 
 Adafruit_BLE_UART BTLEserial = Adafruit_BLE_UART(ADAFRUITBLE_REQ, ADAFRUITBLE_RDY, ADAFRUITBLE_RST);
 
-byte negative_data_count;
-
 int xCoordinate;
 int yCoordinate;
-
-byte xread;
-byte yread;
 
 void setup() {
   // put your setup code here, to run once:
   Serial.begin(9600);
   while(!Serial); // Leonardo/Micro should wait for serial init
   Serial.println(F("Adafruit Bluefruit Low Energy nRF8001 Print echo demo"));
-
-  negative_data_count = 0; // keep track of negative x and y values
-
-  xread = 0;
-  yread = 0;
 
   xCoordinate = 0;
   yCoordinate = 0;
@@ -101,7 +88,7 @@ void loop() {
 
   if (status == ACI_EVT_CONNECTED) {
     // Read every 4 values (negativeX, negativeY, x, y)
-    // negativeX and negativeY are flags indicating x and y should be negative
+    // negativeX and negativeY are flags indicating x and y should be read as negative
     
     if (BTLEserial.available() == 4) {
       int negativeX = BTLEserial.read();
@@ -122,12 +109,14 @@ void loop() {
 }
 
 void convertXYandDrive() {
-  int maxSpeed = 250; // max y value we will read from Bluetooth
-  robotLinearSpeed = (yCoordinate / maxSpeed) * 100;
+  int maxSpeed = 255; // max y value we will read from Bluetooth
+
+  // circle radius vector has magnitude root(x^2 + y^2).
+  // will use this vector magnitude as the speed. 
+  // take the max of this magnitude and 255 which is robot max speed
+  robotLinearSpeed = (float) max(255.0, sqrt(pow((double) xCoordinate, 2.0) + pow((double) yCoordinate, 2.0))); 
   
-  float circleRadius = sqrt(pow((double) xCoordinate, 2.0) + pow((double) yCoordinate, 2.0))  ;
-  robotAngularSpeed = xCoordinate * cos(circleRadius);
-  drive(robotLinearSpeed, robotAngularSpeed);
+  drive(robotLinearSpeed, atan(yCoordinate/xCoordinate));
 }
 
 // Motors read global speed/direction variables
@@ -136,25 +125,5 @@ void convertXYandDrive() {
 // angle > 0 is right
 void drive(float forwardSpeed, int angle){
   
-}
-
-// Sets motor direction
-void setMotorDirection(int right, int left)
-{
-  if(right) {
-    digitalWrite(enableRightMotor, HIGH); 
-  } else {
-    digitalWrite(enableRightMotor, LOW); 
-  }
-  if(left) {
-    digitalWrite(enableLeftMotor, HIGH); 
-  } else {
-    digitalWrite(enableLeftMotor, LOW); 
-  }
-}
-
-int mapFloatToInt(float x, int in_min, int in_max, int out_min, int out_max)
-{
-  return (x - in_min) * (out_max - out_min) / (in_max - in_min) + out_min;
 }
 
