@@ -100,11 +100,6 @@ void loop() {
   }
 
   if (status == ACI_EVT_CONNECTED) {
-    // Lets see if there's any data for us!
-    if (BTLEserial.available()) {
-      //Serial.print("* "); Serial.print(BTLEserial.available()); Serial.println(F(" bytes available from BTLE"));
-    }
-   
     // Read every 4 values (negativeX, negativeY, x, y)
     // negativeX and negativeY are flags indicating x and y should be negative
     
@@ -122,10 +117,6 @@ void loop() {
       if (negativeY) {
         yCoordinate = -yCoordinate;
       }
-      Serial.print("x: ");
-      Serial.println(xCoordinate);
-      Serial.print("y: ");
-      Serial.println(yCoordinate);
     }
   }
 }
