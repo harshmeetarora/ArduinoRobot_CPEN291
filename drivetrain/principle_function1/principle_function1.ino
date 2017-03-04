@@ -215,11 +215,14 @@ void turnRight(){
   fullStop();
 }
 
+void fullStop() {
+  
+}
+
 // Motors read global speed/direction variables
 // angle -90 to 90
 // angle < 0 is left
 // angle > 0 is right
-<<<<<<< HEAD
 void drive(float forwardSpeed, float angle){
   if (angle >= -90.0 && angle <= 90.0) 
   {
