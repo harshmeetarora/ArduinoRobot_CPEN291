@@ -1,7 +1,7 @@
 #include <SPI.h>
 #include "Adafruit_BLE_UART.h"
 #include <Servo.h>
-//#include <math.h>
+#include <math.h>
 
 //Initialize the pins for functionality 1
 #define SERVOPIN 1
@@ -17,7 +17,9 @@
 #define SWITCH1 8   
 #define SWITCH2 9
 
-
+// App constants
+#define FORWARD_ANGLE 90 // 90 degrees is forward (corresponds to the y-axis in the app axes)
+#define JOYSTICK_ANGLE_MARGIN 5 // angle error margin (in degrees) 
  
 // Modes: 
 #define OFF 0   // 0 is "off"
@@ -26,11 +28,11 @@
 #define BT  3    // 3 for the remote control with the bluetooth application
 
 //Initialize the motor PWM speed control ports
-#define rightMotor 4
-#define enableRightMotor 5
-#define enableLeftMotor 6
-#define leftMotor 7 
-#define topSpeed 255
+#define enableRightMotor 4
+#define rightMotor 5
+#define enableLeftMotor 7
+#define leftMotor 6
+#define topSpeed 250
 
 #define ADAFRUITBLE_REQ 10
 #define ADAFRUITBLE_RDY 2     // This should be an interrupt pin, on Uno thats #2 or #3
@@ -41,7 +43,6 @@ int mode = 0;
 int currentSpeed = 0;
 int pos; // servo arm angle
 float distance; // distance read by the rangefinder
-float robotLinearSpeed = 0;
 float speedSlope = topSpeed/(MAXDISTANCE-MINDISTANCE); 
 
 Adafruit_BLE_UART BTLEserial = Adafruit_BLE_UART(ADAFRUITBLE_REQ, ADAFRUITBLE_RDY, ADAFRUITBLE_RST);
@@ -53,7 +54,7 @@ void setup() {
   // put your setup code here, to run once:
   Serial.begin(9600);
   while(!Serial); // Leonardo/Micro should wait for serial init
-  Serial.println(F("Adafruit Bluefruit Low Energy nRF8001 Print echo demo"));
+  Serial.println(F("Adafruit Bluefruit Low Energy nRF8001"));
 
   xCoordinate = 0;
   yCoordinate = 0;
@@ -72,7 +73,7 @@ void loop() {
   aci_evt_opcode_t status = BTLEserial.getState();
   // If the status changed....
   if (status != laststatus) {
-    // print it out!
+    // print it out
     if (status == ACI_EVT_DEVICE_STARTED) {
         Serial.println(F("* Advertising started"));
     }
@@ -87,10 +88,16 @@ void loop() {
   }
 
   if (status == ACI_EVT_CONNECTED) {
-    // Read every 4 values (negativeX, negativeY, x, y)
-    // negativeX and negativeY are flags indicating x and y should be read as negative
-    
-    if (BTLEserial.available() == 4) {
+    // Connected!
+    readBLESerialAndDrive();
+  }
+}
+
+void readBLESerialAndDrive() {
+  // Read every 4 values (negativeX, negativeY, x, y)
+  // the first 2 bytes sent over Bluetooth are flags indicating x and y should be read as negative  
+  // we save these flags in negativeX and negativeY
+  if (BTLEserial.available() == 4) {
       int negativeX = BTLEserial.read();
       int negativeY = BTLEserial.read();
       
@@ -104,26 +111,66 @@ void loop() {
       if (negativeY) {
         yCoordinate = -yCoordinate;
       }
+
+      // we'll set the robot speed to be equal to its y coordinate in the app axes
+      // and get the angle we want to drive at with tan^-1(y/x), saving it in degrees
+      int robotLinearSpeed = yCoordinate; 
+      int robotAngle = (atan2((double) yCoordinate, (double) xCoordinate)) * (180 / PI); 
+
+      // drive at the given speed and angle
+      driveViaJoyStick(robotLinearSpeed, robotAngle);
     }
+}
+
+void driveViaJoyStick(int forwardSpeed, int angle){
+  // if the angle we should be driving at is within the error margin of 
+  // our predefined forward angle, we should not turn and instead go in a straight line
+  // otherwise turn
+  if (abs(abs(angle) - FORWARD_ANGLE) <= JOYSTICK_ANGLE_MARGIN) {
+    writeToMotorsForBLE(forwardSpeed, 0);
+  } else {
+    writeToMotorsForBLE(forwardSpeed, angle);
   }
 }
 
-void convertXYandDrive() {
-  int maxSpeed = 255; // max y value we will read from Bluetooth
+void writeToMotorsForBLE(int motorSpeed, int angle) {
+  if (motorSpeed < 0) {
+    // we should reverse, so take absolute value of motorSpeed
+    // and reverse the enable bits on the wheels
+    motorSpeed = -motorSpeed;
+    setMotorDirection(1,1);
+  } else {
+    setMotorDirection(0,0);
+  }
 
-  // circle radius vector has magnitude root(x^2 + y^2).
-  // will use this vector magnitude as the speed. 
-  // take the max of this magnitude and 255 which is robot max speed
-  robotLinearSpeed = (float) max(255.0, sqrt(pow((double) xCoordinate, 2.0) + pow((double) yCoordinate, 2.0))); 
-  
-  drive(robotLinearSpeed, atan(yCoordinate/xCoordinate));
+  if (angle == 0) {
+    // drive in a straight line forwards (or backwards)
+    analogWrite(rightMotor, motorSpeed);
+    analogWrite(leftMotor, motorSpeed);
+  } else if (abs(angle) > FORWARD_ANGLE) {
+    // desired turning angle is greater than forward angle, so turn left if going forward
+    // or reverse to the left if moving backward
+    analogWrite(rightMotor, motorSpeed);
+    analogWrite(leftMotor, topSpeed - motorSpeed);
+  } else  {
+    // desired turning angle is less than forward angle, so turn right if going forward
+    // or reverse to the right if moving backward
+    analogWrite(rightMotor, 0);
+    analogWrite(leftMotor, motorSpeed);
+  } 
 }
 
-// Motors read global speed/direction variables
-// angle -90 to 90
-// angle < 0 is left
-// angle > 0 is right
-void drive(float forwardSpeed, int angle){
-  
+// Sets the motor direction bits
+void setMotorDirection(int right, int left)
+{
+  if(right) {
+    digitalWrite(enableRightMotor, HIGH); 
+  } else {
+    digitalWrite(enableRightMotor, LOW); 
+  }
+  if(left) {
+    digitalWrite(enableLeftMotor, HIGH); 
+  } else {
+    digitalWrite(enableLeftMotor, LOW); 
+  }   
 }
-
