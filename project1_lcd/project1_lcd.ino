@@ -6,9 +6,9 @@ void updateLCD();
 void displayMode();
 void displaySpeed();
 
-//Arbitrary pins for now
 LiquidCrystal lcd(13, 12, 11, 8, 2, 1);
 
+//Sets up LCD display
 void setup() {
   lcd.begin(20,4);
   lcd.print("Hello.  My name is Saul.");
