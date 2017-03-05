@@ -14,12 +14,9 @@ class ViewController: UIViewController {
     //MARK: mutable instance variables
     var timerTXDelay: Timer?
     var allowTX = true
-    var lastPositionx: CGFloat = 255.0
-    var lastPositiony: CGFloat = 255.0
     var xAxis: CGFloat = 0
     var yAxis: CGFloat = 0
     var path = UIBezierPath(ovalIn: CGRect(x: 0, y:0, width: 10, height:10))
-    var validTouch = Bool()
     var lastTouch = Bool()
     var midpoint = 0
     
@@ -45,7 +42,6 @@ class ViewController: UIViewController {
         shapeLayer.fillColor = UIColor.red.cgColor
         outerView.layer.addSublayer(shapeLayer)
         
-        validTouch = false
         lastTouch = false
         
         NotificationCenter.default.addObserver(self, selector: #selector(ViewController.connectionChanged(_:)), name: NSNotification.Name(rawValue: BLEServiceChangedStatusNotification), object: nil)
@@ -117,15 +113,11 @@ class ViewController: UIViewController {
             return
         }
         
-        if (shapeLayer.contains(CGPoint(x: position1, y: position1))){
-            validTouch = true
-        } else {
-            validTouch = false
-        }
-        
         // initialize x and y
         var x = CGFloat(0.0)
         var y = CGFloat(0.0)
+        var negativeX = UInt8(0)
+        var negativeY = UInt8(0)
         
         
         // only convert if we're not writing a touchEnded value
@@ -134,13 +126,18 @@ class ViewController: UIViewController {
             y = yAxis - position2 // relative to y axis
         }
         
+        print(x);
+        print(y);
+        
         if (x < 0) {
-            bleService.writeLeadingNegativeByteToRobot()
+            //bleService.writeLeadingNegativeByteToRobot()
+            negativeX = 1
             x = -x
         }
         
         if (y < 0) {
-            bleService.writeLeadingNegativeByteToRobot()
+            //bleService.writeLeadingNegativeByteToRobot()
+            negativeY = 1
             y = -y
         }
         
@@ -152,15 +149,8 @@ class ViewController: UIViewController {
             y = 250
         }
         
-        
-        //print(validTouch)
-        //print(position1)
-        //print(position2)
-        
         redrawCircle(position1, y: position2)
-        bleService.writeToRobot(UInt8(x), positiony: UInt8(y))
-        lastPositionx = x;
-        lastPositiony = y;
+        bleService.writeToRobot(negativeX, negativeY: negativeY, positionx: UInt8(x), positiony: UInt8(y))
         
         // Start delay timer
         allowTX = false
@@ -190,9 +180,6 @@ class ViewController: UIViewController {
     func timerTXDelayElapsed() {
         self.allowTX = true
         self.stopTimerTXDelay()
-        
-        // Send current slider position
-        //self.writePosition(0.0, position2: 0.0)
     }
     
     func stopTimerTXDelay() {

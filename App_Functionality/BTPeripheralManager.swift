@@ -76,7 +76,7 @@ class BTPeripheralManager: NSObject, CBPeripheralDelegate {
         self.updateConnectionStatus(true)
     }
     
-    func writeToRobot(_ positionx: UInt8, positiony: UInt8) {
+    func writeToRobot(_ negativeX: UInt8, negativeY: UInt8, positionx: UInt8, positiony: UInt8) {
         if (txCharacteristic == nil){
             print("Unable to write data without txcharacteristic")
             return
@@ -101,7 +101,7 @@ class BTPeripheralManager: NSObject, CBPeripheralDelegate {
         }
         
         if let txCharacteristic = self.txCharacteristic {
-            let data = Data(bytes: [positionx, positiony])
+            let data = Data(bytes: [negativeX, negativeY, positionx, positiony])
             self.peripheral?.writeValue(data, for: txCharacteristic, type: writeType)
         }
     }
