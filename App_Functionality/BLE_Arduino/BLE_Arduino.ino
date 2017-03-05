@@ -151,7 +151,7 @@ void writeToMotorsForBLE(int motorSpeed, int angle) {
     // desired turning angle is greater than forward angle, so turn left if going forward
     // or reverse to the left if moving backward
     analogWrite(rightMotor, motorSpeed);
-    analogWrite(leftMotor, topSpeed - motorSpeed);
+    analogWrite(leftMotor, 0);
   } else  {
     // desired turning angle is less than forward angle, so turn right if going forward
     // or reverse to the right if moving backward
