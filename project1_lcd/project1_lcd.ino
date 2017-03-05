@@ -7,7 +7,7 @@ void displayMode();
 void displaySpeed();
 
 //Arbitrary pins for now
-LiquidCrystal lcd(12, 11, 5, 4 , 3, 2);
+LiquidCrystal lcd(13, 12, 11, 8, 2, 1);
 
 void setup() {
   lcd.begin(20,4);
@@ -28,16 +28,13 @@ void updateLCD(){
 
 /* Displays current mode to top row of LCD */
 void displayMode(){
-  //int mode = getMode();
-  int mode = 1;
+  int mode = (SWITCH) ? 1 : 2;
   lcd.setCursor(0,0);
   lcd.write("MODE %d", mode);
 }
 
 /* Displays current speed to bottom row of LCD */
 void displaySpeed(){
-  //double speed = getSpeed();
-  double speed = 2.5;
   lcd.setCursor(0,1);
-  lcd.write("Speed = %lf", speed);
+  lcd.write("Speed = %lf", robotSpeed);
 }
