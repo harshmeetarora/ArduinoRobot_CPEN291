@@ -6,7 +6,7 @@ void updateLCD();
 void displayMode();
 void displaySpeed();
 
-LiquidCrystal lcd(13, 12, 11, 8, 2, 1);
+LiquidCrystal lcd(13, 12, 11, 8, 1, 0);
 
 //Sets up LCD display
 void setup() {
