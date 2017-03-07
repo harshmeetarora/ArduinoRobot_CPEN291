@@ -54,7 +54,7 @@ void checkLeftHallEffectSensor(){
       firstReadingLeft = 0;
     } else {
       lastInterruptLeft = millis();
-      tireSpeedLeft = 0.5 * PI * 6.5 / ((millis() - halfRotationTimeLeft) / 1000) ; //devided by 1000 to translate millis into seconds
+      tireSpeedLeft = 0.25 * PI * 6.5 / ((millis() - halfRotationTimeLeft) / 1000) ; //devided by 1000 to translate millis into seconds
       firstReadingLeft = 1;
       updateLeftTireSpeed();
     }
@@ -67,14 +67,14 @@ void checkLeftHallEffectSensor(){
 
 void checkRightHallEffectSensor(){
   
-  if ( ((millis() - lastInterruptRight) >  1000)  && (analogRead(A5) < 100) ){
+  if ( ((millis() - lastInterruptRight) >  200)  && (analogRead(A5) < 100) ){
     
     if ( firstReadingRight){
       halfRotationTimeRight = millis();
       firstReadingRight = 0;
     } else {
       lastInterruptRight = millis();
-      tireSpeedRight = 0.5 * PI * 6.5 / ((millis() - halfRotationTimeRight) / 1000) ; //devided by 1000 to translate millis into seconds
+      tireSpeedRight = 0.25 * PI * 6.5 / ((millis() - halfRotationTimeRight) / 1000) ; //devided by 1000 to translate millis into seconds
       firstReadingRight = 1;
       updateRightTireSpeed(); 
     }
