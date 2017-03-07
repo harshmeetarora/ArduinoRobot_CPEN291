@@ -2,6 +2,7 @@
 #include "Adafruit_BLE_UART.h"
 #include <Servo.h>
 #include <math.h>
+#include <LiquidCrystal.h>
 
 //Initialize the pins for functionality 1
 #define SERVOPIN 1
@@ -45,7 +46,17 @@ int pos; // servo arm angle
 float distance; // distance read by the rangefinder
 float speedSlope = topSpeed/(MAXDISTANCE-MINDISTANCE); 
 
+
+/* Function Prototypes */
+void updateLCD();
+void displayMode();
+void displaySpeed();
+
+LiquidCrystal lcd(13, 12, 11, 10, 9, 0);
+
 Adafruit_BLE_UART BTLEserial = Adafruit_BLE_UART(ADAFRUITBLE_REQ, ADAFRUITBLE_RDY, ADAFRUITBLE_RST);
+
+aci_evt_opcode_t laststatus = ACI_EVT_DISCONNECTED;
 
 int xCoordinate;
 int yCoordinate;
@@ -53,19 +64,34 @@ int yCoordinate;
 void setup() {
   // put your setup code here, to run once:
   Serial.begin(9600);
+
+  if (mode == 1) {
+    xCoordinate = 0;
+    yCoordinate = 0;
+    setupBLE();
+  } else {
+    lcd.begin(16,2);
+    lcd.clear();
+    lcd.write("Hello.  My name is Saul.");
+  }
+  
+}
+
+void setupBLE() {
   while(!Serial); // Leonardo/Micro should wait for serial init
   Serial.println(F("Adafruit Bluefruit Low Energy nRF8001"));
-
-  xCoordinate = 0;
-  yCoordinate = 0;
-  
   BTLEserial.begin();
 }
 
-aci_evt_opcode_t laststatus = ACI_EVT_DISCONNECTED;
-
 void loop() {
-  
+  if (mode == 1) {
+    updateBLE();
+  } else {
+   updateLCD(); 
+  }
+}
+
+void updateBLE() {
   // Tell the nRF8001 to do whatever it should be working on.
   BTLEserial.pollACI();
 
@@ -173,4 +199,25 @@ void setMotorDirection(int right, int left)
   } else {
     digitalWrite(enableLeftMotor, LOW); 
   }   
+}
+
+
+/* Updates the LCD with current mode and speed values */
+void updateLCD(){
+  lcd.clear();
+  displayMode();
+  //displaySpeed();
+}
+
+/* Displays current mode to top row of LCD */
+void displayMode(){
+  //int mode = (SWITCH) ? 1 : 2;
+  lcd.setCursor(0,0);
+  lcd.write("Connected");
+}
+
+/* Displays current speed to bottom row of LCD */
+void displaySpeed(){
+  lcd.setCursor(0,1);
+  lcd.write("Speed = shut up");
 }
