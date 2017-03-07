@@ -1,7 +1,8 @@
 #include <SPI.h>
 #include "Adafruit_BLE_UART.h"
-#include <math.h>
 #include <Servo.h>
+#include <math.h>
+#include <LiquidCrystal.h>
 
 //Initialize the pins for functionality 1
 #define SERVOPIN 1
@@ -16,6 +17,10 @@
 // Switches for reading mode:
 #define SWITCH1 8   
 #define SWITCH2 9
+
+// App constants
+#define FORWARD_ANGLE 90 // 90 degrees is forward (corresponds to the y-axis in the app axes)
+#define JOYSTICK_ANGLE_MARGIN 5 // angle error margin (in degrees) 
  
 // Modes: 
 #define OFF 0   // 0 is "off"
@@ -24,11 +29,11 @@
 #define BT  3    // 3 for the remote control with the bluetooth application
 
 //Initialize the motor PWM speed control ports
-#define rightMotor 4
-#define enableRightMotor 5
-#define enableLeftMotor 6
-#define leftMotor 7 
-#define topSpeed 255
+#define enableRightMotor 4
+#define rightMotor 5
+#define enableLeftMotor 7
+#define leftMotor 6
+#define topSpeed 250
 
 #define ADAFRUITBLE_REQ 10
 #define ADAFRUITBLE_RDY 2     // This should be an interrupt pin, on Uno thats #2 or #3
@@ -39,41 +44,54 @@ int mode = 0;
 int currentSpeed = 0;
 int pos; // servo arm angle
 float distance; // distance read by the rangefinder
-float robotLinearSpeed = 0;
-float speedSlope = topSpeed/(MAXDISTANCE-MINDISTANCE);
-float robotAngularSpeed; // Ask Jamie... 
+float speedSlope = topSpeed/(MAXDISTANCE-MINDISTANCE); 
+
+
+/* Function Prototypes */
+void updateLCD();
+void displayMode();
+void displaySpeed();
+
+LiquidCrystal lcd(13, 12, 11, 10, 9, 0);
 
 Adafruit_BLE_UART BTLEserial = Adafruit_BLE_UART(ADAFRUITBLE_REQ, ADAFRUITBLE_RDY, ADAFRUITBLE_RST);
 
-byte negative_data_count;
+aci_evt_opcode_t laststatus = ACI_EVT_DISCONNECTED;
 
 int xCoordinate;
 int yCoordinate;
 
-byte xread;
-byte yread;
-
 void setup() {
   // put your setup code here, to run once:
   Serial.begin(9600);
-  while(!Serial); // Leonardo/Micro should wait for serial init
-  Serial.println(F("Adafruit Bluefruit Low Energy nRF8001 Print echo demo"));
 
-  negative_data_count = 0; // keep track of negative x and y values
-
-  xread = 0;
-  yread = 0;
-
-  xCoordinate = 0;
-  yCoordinate = 0;
+  if (mode == 1) {
+    xCoordinate = 0;
+    yCoordinate = 0;
+    setupBLE();
+  } else {
+    lcd.begin(16,2);
+    lcd.clear();
+    lcd.write("Hello.  My name is Saul.");
+  }
   
+}
+
+void setupBLE() {
+  while(!Serial); // Leonardo/Micro should wait for serial init
+  Serial.println(F("Adafruit Bluefruit Low Energy nRF8001"));
   BTLEserial.begin();
 }
 
-aci_evt_opcode_t laststatus = ACI_EVT_DISCONNECTED;
-
 void loop() {
-  
+  if (mode == 1) {
+    updateBLE();
+  } else {
+   updateLCD(); 
+  }
+}
+
+void updateBLE() {
   // Tell the nRF8001 to do whatever it should be working on.
   BTLEserial.pollACI();
 
@@ -81,7 +99,7 @@ void loop() {
   aci_evt_opcode_t status = BTLEserial.getState();
   // If the status changed....
   if (status != laststatus) {
-    // print it out!
+    // print it out
     if (status == ACI_EVT_DEVICE_STARTED) {
         Serial.println(F("* Advertising started"));
     }
@@ -96,66 +114,79 @@ void loop() {
   }
 
   if (status == ACI_EVT_CONNECTED) {
-    // Lets see if there's any data for us!
-    if (BTLEserial.available()) {
-      //Serial.print("* "); Serial.print(BTLEserial.available()); Serial.println(F(" bytes available from BTLE"));
-    }
-    // OK while we still have something to read, get a character and print it out
-    while (BTLEserial.available()) {
-      int byte1 = (int) BTLEserial.read();
-      if (c == 255) { 
-        negative_data_count++;
-      } else {
-        if (negative_data_count != 0) { // if we have received a leading negative byte from the BLE connection
-          c = -c; // convert this value to its negative
-          negative_data_count--; // decrement # of leading negative bytes we still have to process (should be 0, 1 or 2)
-          allocateCToXYCoordinates(c);
-        } else {
-          allocateCToXYCoordinates(c);
-        }
-        Serial.println(c);
+    // Connected!
+    readBLESerialAndDrive();
+  }
+}
+
+void readBLESerialAndDrive() {
+  // Read every 4 values (negativeX, negativeY, x, y)
+  // the first 2 bytes sent over Bluetooth are flags indicating x and y should be read as negative  
+  // we save these flags in negativeX and negativeY
+  if (BTLEserial.available() == 4) {
+      int negativeX = BTLEserial.read();
+      int negativeY = BTLEserial.read();
+      
+      xCoordinate = BTLEserial.read();
+      yCoordinate = BTLEserial.read();
+        
+      if (negativeX) {
+        xCoordinate = -xCoordinate;
+      }  
+      
+      if (negativeY) {
+        yCoordinate = -yCoordinate;
       }
+
+      // we'll set the robot speed to be equal to its y coordinate in the app axes
+      // and get the angle we want to drive at with tan^-1(y/x), saving it in degrees
+      int robotLinearSpeed = yCoordinate; 
+      int robotAngle = (atan2((double) yCoordinate, (double) xCoordinate)) * (180 / PI); 
+
+      // drive at the given speed and angle
+      driveViaJoyStick(robotLinearSpeed, robotAngle);
     }
+}
+
+void driveViaJoyStick(int forwardSpeed, int angle){
+  // if the angle we should be driving at is within the error margin of 
+  // our predefined forward angle, we should not turn and instead go in a straight line
+  // otherwise turn
+  if (abs(abs(angle) - FORWARD_ANGLE) <= JOYSTICK_ANGLE_MARGIN) {
+    writeToMotorsForBLE(forwardSpeed, 0);
+  } else {
+    writeToMotorsForBLE(forwardSpeed, angle);
   }
 }
 
-void allocateCToXYCoordinates(int c) {
-  if (!xread && !yread) { // if we haven't read any values yet
-    xCoordinate = -c;
-    xread = !xread; // we read x coordinate first to establish convention
-  } else if (xread && !yread) {
-    // we just read a x value
-    yCoordinate = -c;
-    yread = !yread;
-    xread = !xread; 
-  } else if (!xread && yread) {
-    // we just read a y value
-    xCoordinate = -c;
-    xread = !xread;
-    yread = !yread;
-  } else {  
-    Serial.println("ERROR!"); // we're out of order
+void writeToMotorsForBLE(int motorSpeed, int angle) {
+  if (motorSpeed < 0) {
+    // we should reverse, so take absolute value of motorSpeed
+    // and reverse the enable bits on the wheels
+    motorSpeed = -motorSpeed;
+    setMotorDirection(1,1);
+  } else {
+    setMotorDirection(0,0);
   }
+
+  if (angle == 0) {
+    // drive in a straight line forwards (or backwards)
+    analogWrite(rightMotor, motorSpeed);
+    analogWrite(leftMotor, motorSpeed);
+  } else if (abs(angle) > FORWARD_ANGLE) {
+    // desired turning angle is greater than forward angle, so turn left if going forward
+    // or reverse to the left if moving backward
+    analogWrite(rightMotor, motorSpeed);
+    analogWrite(leftMotor, 0);
+  } else  {
+    // desired turning angle is less than forward angle, so turn right if going forward
+    // or reverse to the right if moving backward
+    analogWrite(rightMotor, 0);
+    analogWrite(leftMotor, motorSpeed);
+  } 
 }
 
-void convertXYandDrive() {
-  int maxSpeed = 250; // max y value we will read from Bluetooth
-  robotLinearSpeed = (yCoordinate / maxSpeed) * 100;
-  
-  float circleRadius = sqrt(pow((double) xCoordinate, 2.0) + pow((double) yCoordinate, 2.0))  ;
-  robotAngularSpeed = xCoordinate * cos(circleRadius);
-  drive(robotLinearSpeed, robotAngularSpeed);
-}
-
-// Motors read global speed/direction variables
-// angle -90 to 90
-// angle < 0 is left
-// angle > 0 is right
-void drive(float forwardSpeed, int angle){
-  
-}
-
-// Sets motor direction
+// Sets the motor direction bits
 void setMotorDirection(int right, int left)
 {
   if(right) {
@@ -167,11 +198,26 @@ void setMotorDirection(int right, int left)
     digitalWrite(enableLeftMotor, HIGH); 
   } else {
     digitalWrite(enableLeftMotor, LOW); 
-  }
+  }   
 }
 
-int mapFloatToInt(float x, int in_min, int in_max, int out_min, int out_max)
-{
-  return (x - in_min) * (out_max - out_min) / (in_max - in_min) + out_min;
+
+/* Updates the LCD with current mode and speed values */
+void updateLCD(){
+  lcd.clear();
+  displayMode();
+  //displaySpeed();
 }
 
+/* Displays current mode to top row of LCD */
+void displayMode(){
+  //int mode = (SWITCH) ? 1 : 2;
+  lcd.setCursor(0,0);
+  lcd.write("Connected");
+}
+
+/* Displays current speed to bottom row of LCD */
+void displaySpeed(){
+  lcd.setCursor(0,1);
+  lcd.write("Speed = shut up");
+}

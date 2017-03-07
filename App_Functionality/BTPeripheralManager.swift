@@ -1,9 +1,6 @@
 //
 //  BTPeripheralManager.swift
-//  RobotJoystick
-//
-//  Created by James Asefa on 2017-02-23.
-//  Copyright © 2017 James Asefa. All rights reserved.
+//  CPEN 291 Project 1
 //
 
 import Foundation
@@ -42,6 +39,7 @@ class BTPeripheralManager: NSObject, CBPeripheralDelegate {
             return
         }
         
+        // search for the UART service
         for service in peripheral.services! {
             if service.uuid == BLEServiceUUID {
                 peripheral.discoverCharacteristics(nil, for: service)
@@ -76,7 +74,10 @@ class BTPeripheralManager: NSObject, CBPeripheralDelegate {
         self.updateConnectionStatus(true)
     }
     
-    func writeToRobot(_ positionx: UInt8, positiony: UInt8) {
+    // Writes the given unsigned bytes over Bluetooth. The bytes are written in the order:
+    // negativeX, negativeY, positionx, positiony. The negativeX and negativeY bytes are flags indicating
+    // that the positionx and positiony bytes should be read as negative values.
+    func writeToRobot(_ negativeX: UInt8, negativeY: UInt8, positionx: UInt8, positiony: UInt8) {
         if (txCharacteristic == nil){
             print("Unable to write data without txcharacteristic")
             return
@@ -84,6 +85,7 @@ class BTPeripheralManager: NSObject, CBPeripheralDelegate {
         
         var writeType:CBCharacteristicWriteType
         
+        // specify whether we want a response from the the Bluetooth Module
         if (txCharacteristic!.properties.rawValue & CBCharacteristicProperties.writeWithoutResponse.rawValue) != 0 {
             
             writeType = CBCharacteristicWriteType.withoutResponse
@@ -100,44 +102,14 @@ class BTPeripheralManager: NSObject, CBPeripheralDelegate {
             return
         }
         
+        // write the actual bytes
         if let txCharacteristic = self.txCharacteristic {
-            let data = Data(bytes: [positionx, positiony])
+            let data = Data(bytes: [negativeX, negativeY, positionx, positiony])
             self.peripheral?.writeValue(data, for: txCharacteristic, type: writeType)
         }
     }
     
-    // write the value 255 to robot signifying that the next byte
-    // represents a negative number
-    func writeLeadingNegativeByteToRobot() {
-        if (txCharacteristic == nil){
-            print("Unable to write data without txcharacteristic")
-            return
-        }
-        
-        var writeType:CBCharacteristicWriteType
-        
-        if (txCharacteristic!.properties.rawValue & CBCharacteristicProperties.writeWithoutResponse.rawValue) != 0 {
-            
-            writeType = CBCharacteristicWriteType.withoutResponse
-            
-        }
-            
-        else if ((txCharacteristic!.properties.rawValue & CBCharacteristicProperties.write.rawValue) != 0){
-            
-            writeType = CBCharacteristicWriteType.withResponse
-        }
-            
-        else{
-            print("Unable to write data without characteristic write property")
-            return
-        }
-        
-        if let txCharacteristic = self.txCharacteristic {
-            let data = Data(bytes: [255])
-            self.peripheral?.writeValue(data, for: txCharacteristic, type: writeType)
-        }
-    }
-    
+    // reset connection to the peripheral
     func reset() {
         if peripheral != nil {
             peripheral = nil
