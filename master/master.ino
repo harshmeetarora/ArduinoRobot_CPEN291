@@ -25,25 +25,45 @@
 #define PF2 2   // 2 for principle functionality 2
 #define BT  3    // 3 for the remote control with the bluetooth application
 
-//Initialize the motor PWM speed control ports
+//Initialize the motor PWM speed control pins and constants
 #define enableRightMotor 5
 #define rightMotor 4
 #define enableLeftMotor 6
 #define leftMotor 7
 #define topSpeed 255.0
 #define minSpeed 100.0 // TODO: Adjust based on testing
-
 #define FWD LOW
 #define REV HIGH
 
-//Initialize the global variables
-int mode = 0;
-int currentSpeed = 0;
+// Hall Effect Sensor Pins
+#define rightHallPin 2
+#define leftHallPin  3
+
+// LCD Pins
+#define lcdEnable 8
+#define lcd1      9
+#define lcd2      10
+#define lcd3      11
+#define lcd4      12
+#define lcd5      13
+
+// Optical Sensor Pins
+int infraPins[4] = {A1,A2,A3,A4};
+ 
+//Initialize the global variables: 
+int mode = 0; // 4 modes
+int currentSpeed = 0; // For Hall-effect correction
 int pos; // servo arm angle
 float distance; // distance read by the rangefinder
-float robotLinearSpeed = 0;
+int robotLinearSpeed = 0; // Desired linear speed of the robot
 float speedSlope = (topSpeed-minSpeed)/(MAXDISTANCE-MINDISTANCE);
-int robotAngularSpeed; // Ask Jamie... 
+int robotAngle;
+// The following are for PF2:
+int infraSensorAnalog[4] = {0,0,0,0}; // Storing optical sensor values
+int infraSensorDigital[4] = {0,0,0,0};
+int infraSensors = B0000;  // binary representation of sensors
+int angleCorrection = 0; // goes from 0 to 180, 90 is straight ahead
+int lastAngle = 0;  // Keep track of the optical sensors' last angle in case line is lost
 
 //Initialize a servo motor object
 Servo servo;
@@ -52,13 +72,17 @@ void setup()
 {
   //start a serial connection
   Serial.begin (9600);
+
+  pinMode(SWITCH1, INPUT);
+  pinMode(SWITCH2, INPUT);
   
-  // acquire pinmodes of all sensors
-  // acquire motor pinmodes
+  // set motor pinmodes
   pinMode(rightMotor, OUTPUT);
   pinMode(leftMotor, OUTPUT);
-
-  //acquire sensor pinmodes 
+  pinMode(enableRightMotor, OUTPUT);
+  pinMode(enableLeftMotor, OUTPUT);
+  
+  //set rangefinder pinmodes 
   pinMode(TRIG, OUTPUT);
   pinMode(ECHO, INPUT);
 
@@ -67,28 +91,39 @@ void setup()
   //set initial direction of sevo
   servo.write(90);
 
+  // set up optical sensor pins
+  pinMode(infraPins[0], INPUT);
+  pinMode(infraPins[1], INPUT);
+  pinMode(infraPins[2], INPUT);
+  pinMode(infraPins[3], INPUT);
+
   // acquire the mode from buttons 
   acquireMode();
+
+  if(mode==BT){
+    // bluetooth pin configuration here
+  } else {
+    // LCD pin configuration here
+  }
 }
 
 void loop()
 {
-  // acquire the mode from buttons
   // check state of 2 buttons for 4 modes
-  acquireMode();
   if (mode == PF1)
   {
     functionality1();
+    drive(robotLinearSpeed, robotLinearSpeed);
   }
   else if (mode == PF2)
   {
     functionality2();
+    lineFollow();
   }
   else if (mode == BT)
   {
     functionality3();
   }
-  drive();
 }
 
 /*
@@ -96,15 +131,14 @@ void loop()
  * Then, turns robot left or right
  * Finally, proceeds in the new direction
  */
-void functionality1(){
+void functionality1()
+{
   distance = readDistance();
-  Serial.println(distance);
   if(distance>=MAXDISTANCE){
     robotLinearSpeed = topSpeed;
   } else { 
     robotLinearSpeed = speedSlope*(distance - MINDISTANCE);
   }
-  Serial.println(robotLinearSpeed);
   if (robotLinearSpeed < 0.1){
     robotLinearSpeed = 0;
     fullStop();
@@ -112,15 +146,19 @@ void functionality1(){
     Serial.println(newDirection);
     newDirection == 'L' ? turnLeft() : turnRight();
   }
+  setMotorDirection(FWD,FWD);
 }
 
 /*
- * Moves the robot on a flat surface while following a strip
- * of black electrical tape, turning if necessary
+ * Moves the robot on a flat surface to follow 
+ * a strip of black electrical tape
  */
 void functionality2()
 {
-  
+  // Add Sahil's code here:
+  lineScan();
+  updateDirection();
+  lineFollow();
 }
 
 /*
@@ -141,18 +179,10 @@ void acquireMode()
 }
 
 // Sets motor direction
-void setMotorDirection(int right, int left)
+void setMotorDirection(int left, int right)
 {
-  if(right) {
-    digitalWrite(rightMotor, FWD); 
-  } else {
-    digitalWrite(rightMotor, REV); 
-  }
-  if(left) {
-    digitalWrite(leftMotor, FWD); 
-  } else {
-    digitalWrite(leftMotor, REV); 
-  }   
+  digitalWrite(rightMotor, right); 
+  digitalWrite(leftMotor, left); 
 }
 
 void evaluateHallSensors()
@@ -160,7 +190,8 @@ void evaluateHallSensors()
   // check actual wheel speed and adjust power levels accordingly
 }
 
-float readDistance(){
+float readDistance()
+{
   digitalWrite(TRIG, LOW);
   delayMicroseconds(2);
   digitalWrite(TRIG, HIGH); // start signal
@@ -173,32 +204,24 @@ float readDistance(){
   // speedOfSound = (1/speedOfSound)*10000.0; // in [cm/us]
   return EchoWidth / (speedOfSound * 2.0);
 }
-/*
-// Read value from LM35 and convert to degrees Celsius
-float readTemperature() {
-  float t = analogRead(LM);
-  return 0.48828125 * t;
-}
-*/
+
 // Scans left and right to determine which offers more space
-char servoScan(){
+char servoScan()
+{
   servo.write(0);
   delay(800);
   float newDist1 = readDistance();
-  Serial.print("distance 1: ");
-  Serial.println(newDist1);
   servo.write(180);
   delay(1200);
   float newDist2 = readDistance();
-  Serial.print("distance 2: ");
-  Serial.println(newDist2);
   servo.write(90);
   return (newDist1 >= newDist2) ? 'L' : 'R';
 }
 
 // Turns robot 90* left
-void turnLeft(){
-  setMotorDirection(0,1);
+void turnLeft()
+{
+  setMotorDirection(REV,FWD);
   analogWrite(enableLeftMotor, topSpeed-80);
   analogWrite(enableRightMotor, topSpeed-80);
   delay(800);
@@ -206,8 +229,9 @@ void turnLeft(){
 }
 
 // Turns robot 90* right
-void turnRight(){
-  setMotorDirection(1,0);
+void turnRight()
+{
+  setMotorDirection(FWD,REV);
   analogWrite(enableLeftMotor, topSpeed-80);
   analogWrite(enableRightMotor, topSpeed-80);
   delay(800);
@@ -215,21 +239,89 @@ void turnRight(){
 }
 
 // Motors read global speed/direction variables
-// angle -90 to 90
-// angle < 0 is left
-// angle > 0 is right
-void drive(){
-  digitalWrite(rightMotor, FWD); 
-  digitalWrite(leftMotor, FWD);
-  analogWrite(enableLeftMotor, robotLinearSpeed);
-  analogWrite(enableRightMotor, robotLinearSpeed);
+void drive(int leftSpeed, int rightSpeed)
+{
+  analogWrite(enableLeftMotor, leftSpeed);
+  analogWrite(enableRightMotor, rightSpeed);
 }
 
-void fullStop(){
+void fullStop()
+{
   digitalWrite(leftMotor, LOW);
   digitalWrite(rightMotor, LOW);
   analogWrite(enableLeftMotor, 0);
   analogWrite(enableRightMotor, 0);
 }
 
+void lineScan()
+{   
+  infraSensors = B0000;
+  int i; 
+  for (i = 0; i < 4; i++) {
+    infraSensorAnalog[i] = analogRead(infraPins[i]);
+    if (infraSensorAnalog[i] > 350 && infraSensorAnalog[i] < 950) {
+        infraSensorDigital[i] = 1;
+    }
+    else {infraSensorDigital[i] = 0;}
+    int b = 3-i;
+    infraSensors = infraSensors + (infraSensorDigital[i]<<b);
+    }    
+}
 
+void updateDirection() 
+{
+  lastAngle = angleCorrection;
+  switch (infraSensors) {
+    case B0000:
+       if (lastAngle < 90) { angleCorrection = 0;}
+       else if (lastAngle > 90) {angleCorrection = 180;}
+       break;     
+     case B1000: // leftmost sensor on the line- SHARP LEFT
+       angleCorrection = 180;
+       break;  
+     case B0100: 
+       angleCorrection = 135;
+       break;
+     case B0010: 
+       angleCorrection = 45;
+       break;
+     case B0001:  
+       angleCorrection = 0;
+       break;     
+     case B0110: 
+       angleCorrection = 90;
+       break;
+     case B1100: 
+       angleCorrection = 180;
+       break; 
+      case B0011: 
+       angleCorrection = 0;
+       break;
+   default:
+     angleCorrection = lastAngle;
+  }
+}
+
+void lineFollow()
+{
+  if(angleCorrection==90){     
+     setMotorDirection(FWD,FWD);
+     drive(topSpeed, topSpeed);
+    }
+  if(angleCorrection==0){
+     setMotorDirection(FWD,FWD);
+     drive(topSpeed-150, topSpeed-50);
+    }
+   if(angleCorrection==45){     
+     setMotorDirection(FWD,FWD);
+     drive(topSpeed-10, topSpeed-60);
+    }
+  if(angleCorrection==135){     
+     setMotorDirection(FWD,FWD);
+     drive(topSpeed-60, topSpeed-10);
+    }
+  if(angleCorrection==180){ 
+     setMotorDirection(FWD,FWD);
+     drive(topSpeed-50, topSpeed-150);
+    }
+}
