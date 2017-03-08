@@ -40,7 +40,7 @@
 #define ADAFRUITBLE_RST 9
 
 //Initialize the global variables
-int mode = 0;
+int mode = 1;
 int currentSpeed = 0;
 int pos; // servo arm angle
 float distance; // distance read by the rangefinder
@@ -52,9 +52,14 @@ void updateLCD();
 void displayMode();
 void displaySpeed();
 
-LiquidCrystal lcd(13, 12, 11, 10, 9, 0);
+int i;
 
-Adafruit_BLE_UART BTLEserial = Adafruit_BLE_UART(ADAFRUITBLE_REQ, ADAFRUITBLE_RDY, ADAFRUITBLE_RST);
+//LiquidCrystal lcd();
+LiquidCrystal lcd(mode);
+
+Adafruit_BLE_UART BTLEserial = Adafruit_BLE_UART(ADAFRUITBLE_REQ, ADAFRUITBLE_RDY, ADAFRUITBLE_RST, mode);
+
+//LiquidCrystal lcd(13, 12, 11, 10, 9, 8);
 
 aci_evt_opcode_t laststatus = ACI_EVT_DISCONNECTED;
 
@@ -70,9 +75,9 @@ void setup() {
     yCoordinate = 0;
     setupBLE();
   } else {
+    lcd.updatePins(13, 12, 11, 10, 9, 8);
     lcd.begin(16,2);
-    lcd.clear();
-    lcd.write("Hello.  My name is Saul.");
+    i = 0;
   }
   
 }
@@ -116,6 +121,7 @@ void updateBLE() {
   if (status == ACI_EVT_CONNECTED) {
     // Connected!
     readBLESerialAndDrive();
+    //Serial.println("hi");
   }
 }
 
@@ -140,7 +146,7 @@ void readBLESerialAndDrive() {
 
       // we'll set the robot speed to be equal to its y coordinate in the app axes
       // and get the angle we want to drive at with tan^-1(y/x), saving it in degrees
-      int robotLinearSpeed = yCoordinate; 
+      int robotLinearSpeed = min(255, sqrt(pow(xCoordinate,2) + pow(yCoordinate,2))); 
       int robotAngle = (atan2((double) yCoordinate, (double) xCoordinate)) * (180 / PI); 
 
       // drive at the given speed and angle
@@ -173,16 +179,22 @@ void writeToMotorsForBLE(int motorSpeed, int angle) {
     // drive in a straight line forwards (or backwards)
     analogWrite(rightMotor, motorSpeed);
     analogWrite(leftMotor, motorSpeed);
+    Serial.print("right wheel: ");Serial.println(motorSpeed);
+    Serial.print("left wheel: ");Serial.println(motorSpeed);
   } else if (abs(angle) > FORWARD_ANGLE) {
     // desired turning angle is greater than forward angle, so turn left if going forward
     // or reverse to the left if moving backward
-    analogWrite(rightMotor, motorSpeed);
-    analogWrite(leftMotor, 0);
+    analogWrite(rightMotor, (int) abs(motorSpeed * sin(angle * (PI / 180))));
+    analogWrite(leftMotor, motorSpeed);
+    Serial.print("left wheel: ");Serial.println((int) abs(motorSpeed * sin(angle * (PI / 180))));
+    Serial.print("right wheel: ");Serial.println(motorSpeed);
   } else  {
     // desired turning angle is less than forward angle, so turn right if going forward
     // or reverse to the right if moving backward
-    analogWrite(rightMotor, 0);
-    analogWrite(leftMotor, motorSpeed);
+    analogWrite(rightMotor, motorSpeed);
+    analogWrite(leftMotor, (int) abs(motorSpeed * sin(angle * (PI / 180))));
+    Serial.print("left wheel: ");Serial.println(motorSpeed);
+    Serial.print("right wheel: ");Serial.println((int) abs(motorSpeed * sin(angle * (PI / 180))));
   } 
 }
 
@@ -204,16 +216,21 @@ void setMotorDirection(int right, int left)
 
 /* Updates the LCD with current mode and speed values */
 void updateLCD(){
-  lcd.clear();
+  lcd.setCursor(0, 0);
+  // print the number of seconds since reset:
+  lcd.print("hello, world!");
+  /*lcd.clear();
   displayMode();
-  //displaySpeed();
+  //displaySpeed();*/
 }
 
 /* Displays current mode to top row of LCD */
 void displayMode(){
   //int mode = (SWITCH) ? 1 : 2;
-  lcd.setCursor(0,0);
-  lcd.write("Connected");
+  i++;
+  lcd.clear();
+  //lcd.setCursor(0,0);
+  //lcd.write(i);
 }
 
 /* Displays current speed to bottom row of LCD */
