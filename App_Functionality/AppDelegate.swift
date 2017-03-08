@@ -1,9 +1,6 @@
 //
 //  AppDelegate.swift
-//  RobotJoystick
-//
-//  Created by James Asefa on 2017-02-17.
-//  Copyright © 2017 James Asefa. All rights reserved.
+//  CPEN 291 Project 1
 //
 
 import UIKit

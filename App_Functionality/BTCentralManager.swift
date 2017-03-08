@@ -1,16 +1,17 @@
 //
 //  BTCentralManager.swift
-//  RobotJoystick
-//
-//  Created by James Asefa on 2017-02-23.
-//  Copyright © 2017 James Asefa. All rights reserved.
+//  CPEN 291 Project 1
 //
 
 import Foundation
 import CoreBluetooth
 
+// global BLE central manager - will handle the connection to the peripheral
 let btDiscoverySharedInstance = BTCentralManager()
 
+// service and characteristic ID's as defined by Adafruit
+// these are Bluetooth Low Energy protocol ID's that allow a central manager
+// (in this case the app) choose how it wants to interact with the peripheral device
 let BLEServiceUUID = CBUUID(string: "6E400001-B5A3-F393-E0A9-E50E24DCCA9E")
 let TXCharacteristicUUID = CBUUID(string: "6E400002-B5A3-F393-E0A9-E50E24DCCA9E")
 let RXCharacteristicUUID = CBUUID(string: "6E400003-B5A3-F393-E0A9-E50E24DCCA9E")
@@ -24,7 +25,7 @@ class BTCentralManager: NSObject, CBCentralManagerDelegate {
     var peripheralService: BTPeripheralManager? {
         didSet {
             if let service = self.peripheralService {
-                service.discoverServices()
+                service.discoverServices() // discover the services for this peripheral
             }
         }
     }
@@ -36,6 +37,7 @@ class BTCentralManager: NSObject, CBCentralManagerDelegate {
         centralManager = CBCentralManager(delegate: self, queue: nil)
     }
     
+    // scan for nearby BLE peripherals
     func scan() {
         if let central = centralManager {
             central.scanForPeripherals(withServices: [BLEServiceUUID], options: nil)
@@ -45,10 +47,6 @@ class BTCentralManager: NSObject, CBCentralManagerDelegate {
     //MARK: Central Manager Delegate
     
     func centralManager(_ central: CBCentralManager, didDiscover peripheral: CBPeripheral, advertisementData: [String : Any], rssi RSSI: NSNumber) {
-        
-        //let svcIDs = advertisementData[CBAdvertisementDataServiceUUIDsKey] as? NSArray
-        //print(peripheral)
-        //print(svcIDs)
         
         
         // if we're already connected to this, return
@@ -93,11 +91,13 @@ class BTCentralManager: NSObject, CBCentralManagerDelegate {
         self.scan()
     }
     
+    // reset connections
     func clearConnection() {
         self.peripheralService = nil
         self.peripheralDevice = nil
     }
     
+    // Callback function that is called when the app comes into view
     func centralManagerDidUpdateState(_ central: CBCentralManager){
         
         switch (central.state) {
