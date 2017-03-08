@@ -103,7 +103,7 @@ void loop()
 void functionality1(){
   distance = readDistance();
   Serial.println(distance);
-  if(distance>=400){
+  if(distance >= 400){
     robotLinearSpeed = topSpeed;
   } else { 
     robotLinearSpeed = speedSlope*(distance - MINDISTANCE);
@@ -219,7 +219,6 @@ void turnRight(){
 // angle -90 to 90
 // angle < 0 is left
 // angle > 0 is right
-<<<<<<< HEAD
 void drive(float forwardSpeed, float angle){
   if (angle >= -90.0 && angle <= 90.0) 
   {
@@ -249,28 +248,28 @@ void drive(float forwardSpeed, float angle){
 }
 
 
-/*
- * Turns one motor only at the given speed according to the given angle
- */
-void writeToMotors(float turnSpeed, int angle){
-  if (angle < 0){
-    setMotorDirection(0,1);
-    analogWrite(leftMotor, 0);
-    analogWrite(rightMotor, turnSpeed);
-    //delay(1000);
-   // fullStop();
-  } else if (angle > 0){
-    setMotorDirection(1,0);
-    analogWrite(rightMotor, turnSpeed);
-    analogWrite(leftMotor, 0);
-    //delay(1000);
-   // fullStop();
-  } else {
-    // proceed with both motors at the required speed
-    setMotorDirection(1,1);
-    analogWrite(leftMotor, turnSpeed);
-    analogWrite(rightMotor, turnSpeed);
-  }
-}
+///*
+// * Turns one motor only at the given speed according to the given angle
+// */
+//void writeToMotors(float turnSpeed, int angle){
+//  if (angle < 0){
+//    setMotorDirection(0,1);
+//    analogWrite(leftMotor, 0);
+//    analogWrite(rightMotor, turnSpeed);
+//    //delay(1000);
+//   // fullStop();
+//  } else if (angle > 0){
+//    setMotorDirection(1,0);
+//    analogWrite(rightMotor, turnSpeed);
+//    analogWrite(leftMotor, 0);
+//    //delay(1000);
+//   // fullStop();
+//  } else {
+//    // proceed with both motors at the required speed
+//    setMotorDirection(1,1);
+//    analogWrite(leftMotor, turnSpeed);
+//    analogWrite(rightMotor, turnSpeed);
+//  }
+//}
 
 
