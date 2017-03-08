@@ -4,23 +4,29 @@ int E2 = 6;
 int M2 = 7;  
 char firstReadingLeft;
 char firstReadingRight;
-double halfRotationTimeLeft;
-double halfRotationTimeRight;
 double tireSpeedLeft;
 double tireSpeedRight;
 double controlSpeedLeft;
 double controlSpeedRight;
-double desiredSpeed = 15;
+double desiredSpeedRight;
+double desiredSpeedLeft;
 
 unsigned long lastInterruptRight = 0;
 unsigned long lastInterruptLeft = 0;
+
+/* IMPORTANT:
+update lastInterrupt to 0 when stopped
+*/
 
 void setup() {
    Serial.begin (9600);
    pinMode(M1, OUTPUT);   
    pinMode(M2, OUTPUT);
-   pinMode(A0, INPUT_PULLUP);
-   pinMode(A1, INPUT_PULLUP);
+   pinMode(2, INPUT);
+   pinMode(3, INPUT);
+   
+   attachInterrupt(digitalPinToInterrupt(2), checkRightHallEffectSensor, RISING);
+   attachInterrupt(digitalPinToInterrupt(3), checkLeftHallEffectSensor, RISING);
 
    
 
@@ -38,7 +44,6 @@ void setup() {
 
 void loop() {  
 
-  checkLeftHallEffectSensor();
   
 
 }
@@ -46,42 +51,30 @@ void loop() {
 
 void checkLeftHallEffectSensor(){
   
-  if ( ((millis() - lastInterruptLeft) >  200)  && (analogRead(A0) < 100) ){  
     
     if ( firstReadingLeft){
       lastInterruptLeft = millis();
-      halfRotationTimeLeft = lastInterruptLeft;
       firstReadingLeft = 0;
     } else {
+      tireSpeedLeft = 0.25 * PI * 6.5 / ((millis() - halfRotationTimeLeft) / 1000) ; //devided by 1000 to translate millis into seconds       
       lastInterruptLeft = millis();
-      tireSpeedLeft = 0.25 * PI * 6.5 / ((millis() - halfRotationTimeLeft) / 1000) ; //devided by 1000 to translate millis into seconds
-      firstReadingLeft = 1;
-      updateLeftTireSpeed();
+      updateLeftTireSpeed(); // optional
     }
     
-  } else if ( (millis() - lastInterruptLeft) > 1000){
-    updateLeftTireSpeed();
-  }
    
 }
 
 void checkRightHallEffectSensor(){
-  
-  if ( ((millis() - lastInterruptRight) >  200)  && (analogRead(A5) < 100) ){
-    
+ 
     if ( firstReadingRight){
-      halfRotationTimeRight = millis();
+      lastInterruptRight = millis();
       firstReadingRight = 0;
     } else {
+      tireSpeedRight = 0.25 * PI * 6.5 / ((millis() - lastInterruptRight) / 1000) ; //devided by 1000 to translate millis into seconds
       lastInterruptRight = millis();
-      tireSpeedRight = 0.25 * PI * 6.5 / ((millis() - halfRotationTimeRight) / 1000) ; //devided by 1000 to translate millis into seconds
-      firstReadingRight = 1;
-      updateRightTireSpeed(); 
+      updateRightTireSpeed(); // optional 
     }
     
-  } else if ( (millis() - lastInterruptRight) > 1000){
-     updateRightTireSpeed();
-  }
   
 }
 
@@ -90,7 +83,7 @@ void updateLeftTireSpeed(){
     double change;
     double PMWDriveSignal;
     
-    change = (desiredSpeed - tireSpeedLeft) ;
+    change = (desiredSpeedLeft - tireSpeedLeft) ;
     controlSpeedLeft = max(controlSpeedLeft + change, 0);
     if (controlSpeedLeft > 65) {
       controlSpeedLeft = 65;
@@ -98,9 +91,9 @@ void updateLeftTireSpeed(){
     PMWDriveSignal = map(controlSpeedLeft , 0, 65, 0, 255);      
     digitalWrite(M2, LOW);       
     analogWrite(E2, PMWDriveSignal );   //PWM Speed Control
-    if (PMWDriveSignal < 20){    // update tire speed to 0 if DriveSignal is too small to make the tire turn 
+   /* if (PMWDriveSignal < 20){    // update tire speed to 0 if DriveSignal is too small to make the tire turn 
       tireSpeedLeft = 0;  
-    }
+    } // DO THIS SOMEWHERE ELSE */
   
 }
 
@@ -108,7 +101,7 @@ void updateRightTireSpeed(){
     double change;
     double PMWDriveSignal;
     
-    change = desiredSpeed - tireSpeedRight;
+    change = desiredSpeedRight - tireSpeedRight;
     controlSpeedRight = max(controlSpeedRight + change, 0);
     if (controlSpeedRight > 65) {
       controlSpeedRight = 65;
@@ -116,9 +109,9 @@ void updateRightTireSpeed(){
     PMWDriveSignal = map(controlSpeedRight , 0, 65, 0, 255);
     digitalWrite(M1, HIGH);       
     analogWrite(E1, PMWDriveSignal);   //PWM Speed Control  
-    if (PMWDriveSignal < 20){ // update tire speed to 0 if DriveSignal is too small to make the tire turn 
-      tireSpeedLeft = 0;  
-    }
+    /*if (PMWDriveSignal < 20){ // update tire speed to 0 if DriveSignal is too small to make the tire turn 
+      tireSpeedLeft = 0; 
+    } // DO THIS SOMEWHERE ELSE */
   
 }
 
