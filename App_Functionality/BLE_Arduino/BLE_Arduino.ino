@@ -28,6 +28,8 @@
 #define PF2 2   // 2 for principle functionality 2
 #define BT  3    // 3 for the remote control with the bluetooth application
 
+#define LCD_ENABLE_PIN 8
+
 //Initialize the motor PWM speed control ports
 #define enableRightMotor 4
 #define rightMotor 5
@@ -40,7 +42,7 @@
 #define ADAFRUITBLE_RST 9
 
 //Initialize the global variables
-int mode = 1;
+int mode = 0;
 int currentSpeed = 0;
 int pos; // servo arm angle
 float distance; // distance read by the rangefinder
@@ -59,8 +61,6 @@ LiquidCrystal lcd(mode);
 
 Adafruit_BLE_UART BTLEserial = Adafruit_BLE_UART(ADAFRUITBLE_REQ, ADAFRUITBLE_RDY, ADAFRUITBLE_RST, mode);
 
-//LiquidCrystal lcd(13, 12, 11, 10, 9, 8);
-
 aci_evt_opcode_t laststatus = ACI_EVT_DISCONNECTED;
 
 int xCoordinate;
@@ -71,11 +71,19 @@ void setup() {
   Serial.begin(9600);
 
   if (mode == 1) {
+    //pinMode(LCD_ENABLE_PIN, OUTPUT);
+    //digitalWrite(LCD_ENABLE_PIN, LOW);
+    lcd.updatePins(13, 8, 12, 11, 10, 9);
+    lcd.begin(16,2);
+    lcd.clear();
+    lcd.updatePins(8,7,6,5,4,3);
+    pinMode(LCD_ENABLE_PIN, OUTPUT);
+    digitalWrite(LCD_ENABLE_PIN, LOW);
     xCoordinate = 0;
     yCoordinate = 0;
     setupBLE();
   } else {
-    lcd.updatePins(13, 12, 11, 10, 9, 8);
+    lcd.updatePins(13, 8, 12, 11, 10, 9);
     lcd.begin(16,2);
     i = 0;
   }
