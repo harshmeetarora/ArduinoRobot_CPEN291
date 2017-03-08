@@ -8,7 +8,7 @@ void displaySpeed();
 
 LiquidCrystal lcd(13, 12, 11, 8, 1, 0);
 
-//Sets up LCD display
+/* Sets up LCD display */
 void setup() {
   lcd.begin(20,4);
   lcd.print("Hello.  My name is Saul.");
