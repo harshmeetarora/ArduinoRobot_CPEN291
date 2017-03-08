@@ -58,6 +58,7 @@ float distance; // distance read by the rangefinder
 int robotLinearSpeed = 0; // Desired linear speed of the robot
 float speedSlope = (topSpeed-minSpeed)/(MAXDISTANCE-MINDISTANCE);
 int robotAngle;
+// The following are for PF2:
 int infraSensorAnalog[4] = {0,0,0,0}; // Storing optical sensor values
 int infraSensorDigital[4] = {0,0,0,0};
 int infraSensors = B0000;  // binary representation of sensors
@@ -112,7 +113,7 @@ void loop()
   if (mode == PF1)
   {
     functionality1();
-    drive();
+    drive(robotLinearSpeed, robotLinearSpeed);
   }
   else if (mode == PF2)
   {
@@ -133,13 +134,11 @@ void loop()
 void functionality1()
 {
   distance = readDistance();
-  Serial.println(distance);
   if(distance>=MAXDISTANCE){
     robotLinearSpeed = topSpeed;
   } else { 
     robotLinearSpeed = speedSlope*(distance - MINDISTANCE);
   }
-  Serial.println(robotLinearSpeed);
   if (robotLinearSpeed < 0.1){
     robotLinearSpeed = 0;
     fullStop();
@@ -147,6 +146,7 @@ void functionality1()
     Serial.println(newDirection);
     newDirection == 'L' ? turnLeft() : turnRight();
   }
+  setMotorDirection(FWD,FWD);
 }
 
 /*
@@ -179,18 +179,10 @@ void acquireMode()
 }
 
 // Sets motor direction
-void setMotorDirection(int right, int left)
+void setMotorDirection(int left, int right)
 {
-  if(right) {
-    digitalWrite(rightMotor, FWD); 
-  } else {
-    digitalWrite(rightMotor, REV); 
-  }
-  if(left) {
-    digitalWrite(leftMotor, FWD); 
-  } else {
-    digitalWrite(leftMotor, REV); 
-  }   
+  digitalWrite(rightMotor, right); 
+  digitalWrite(leftMotor, left); 
 }
 
 void evaluateHallSensors()
@@ -229,7 +221,7 @@ char servoScan()
 // Turns robot 90* left
 void turnLeft()
 {
-  setMotorDirection(0,1);
+  setMotorDirection(REV,FWD);
   analogWrite(enableLeftMotor, topSpeed-80);
   analogWrite(enableRightMotor, topSpeed-80);
   delay(800);
@@ -239,7 +231,7 @@ void turnLeft()
 // Turns robot 90* right
 void turnRight()
 {
-  setMotorDirection(1,0);
+  setMotorDirection(FWD,REV);
   analogWrite(enableLeftMotor, topSpeed-80);
   analogWrite(enableRightMotor, topSpeed-80);
   delay(800);
@@ -247,15 +239,10 @@ void turnRight()
 }
 
 // Motors read global speed/direction variables
-// angle -90 to 90
-// angle < 0 is left
-// angle > 0 is right
-void drive()
+void drive(int leftSpeed, int rightSpeed)
 {
-  digitalWrite(rightMotor, FWD); 
-  digitalWrite(leftMotor, FWD);
-  analogWrite(enableLeftMotor, robotLinearSpeed);
-  analogWrite(enableRightMotor, robotLinearSpeed);
+  analogWrite(enableLeftMotor, leftSpeed);
+  analogWrite(enableRightMotor, rightSpeed);
 }
 
 void fullStop()
@@ -318,33 +305,23 @@ void updateDirection()
 void lineFollow()
 {
   if(angleCorrection==90){     
-     digitalWrite(rightMotor, LOW );
-     digitalWrite(leftMotor, LOW); 
-     analogWrite(enableLeftMotor, topSpeed);
-     analogWrite(enableRightMotor, topSpeed);  
+     setMotorDirection(FWD,FWD);
+     drive(topSpeed, topSpeed);
     }
   if(angleCorrection==0){
-    digitalWrite(rightMotor, LOW ); 
-    digitalWrite(leftMotor, LOW);  
-     analogWrite(enableLeftMotor, topSpeed-150);
-     analogWrite(enableRightMotor, topSpeed-50);      
+     setMotorDirection(FWD,FWD);
+     drive(topSpeed-150, topSpeed-50);
     }
    if(angleCorrection==45){     
-    digitalWrite(rightMotor, LOW);
-     digitalWrite(leftMotor, LOW); 
-     analogWrite(enableLeftMotor, topSpeed-10);
-     analogWrite(enableRightMotor, topSpeed-60);   
+     setMotorDirection(FWD,FWD);
+     drive(topSpeed-10, topSpeed-60);
     }
   if(angleCorrection==135){     
-    digitalWrite(rightMotor, LOW);
-     digitalWrite(leftMotor, LOW); 
-     analogWrite(enableLeftMotor, topSpeed-60);
-     analogWrite(enableRightMotor, topSpeed-10); 
+     setMotorDirection(FWD,FWD);
+     drive(topSpeed-60, topSpeed-10);
     }
   if(angleCorrection==180){ 
-    digitalWrite(leftMotor, LOW);    
-    digitalWrite(rightMotor, LOW);
-     analogWrite(enableLeftMotor, topSpeed-50);
-     analogWrite(enableRightMotor, topSpeed-150);
+     setMotorDirection(FWD,FWD);
+     drive(topSpeed-50, topSpeed-150);
     }
 }
