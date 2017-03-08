@@ -56,7 +56,7 @@ void checkLeftHallEffectSensor(){
       lastInterruptLeft = millis();
       firstReadingLeft = 0;
     } else {
-      tireSpeedLeft = 0.25 * PI * 6.5 / ((millis() - halfRotationTimeLeft) / 1000) ; //devided by 1000 to translate millis into seconds       
+      tireSpeedLeft = 0.25 * PI * 6.5 / ((millis() - lastInterruptLeft) / 1000) ; //devided by 1000 to translate millis into seconds       
       lastInterruptLeft = millis();
       updateLeftTireSpeed(); // optional
     }
