@@ -67,7 +67,7 @@ int yCoordinate;
 void setup() {
   // put your setup code here, to run once:
   Serial.begin(9600);
-
+  
   if (mode == 1) {
     xCoordinate = 0;
     yCoordinate = 0;
