@@ -37,6 +37,7 @@
 
 // define motor constants
 #define topSpeed 35.0
+#define maxSpeed 152
 #define minSpeed 10.0 // TODO: Adjust this based on testing
 #define FWD LOW
 #define REV HIGH
@@ -277,7 +278,23 @@ void functionality2()
 void acquireMode()
 { 
   // Commented out just for testing
-  Serial.println("Please enter a mode. 1 for PF1, 2 for PF2, 3 for BT");
+  //Serial.println("Please enter a mode. 1 for PF1, 2 for PF2, 3 for BT");
+  // print start up info to LCD. Wait for user to input mode.
+  lcd.updatePins(13, 8, 12, 11, 10, 9);
+  lcd.begin(16,2);
+  lcd.clear();
+  lcd.setCursor(0, 0);
+  lcd.print("Choose mode");
+  delay(3000);
+  lcd.clear();
+  lcd.setCursor(0, 0);
+  lcd.print("1 = PF1, 2 = PF2");
+  lcd.setCursor(0,1);
+  lcd.print("3 = BT");
+  delay(3000);
+  lcd.clear();
+  lcd.setCursor(0, 0);
+  lcd.print("waiting..");
   while (!digitalRead(SWITCH1) && !digitalRead(SWITCH2)) {
     
   }
@@ -287,20 +304,40 @@ void acquireMode()
   int sw2 = digitalRead(SWITCH2);
 
   if (sw1 && sw2) {
+    lcd.clear();
+    lcd.setCursor(0, 0);
+    lcd.print("mode = 3");
+    delay(2000);
     mode = 3;
   } else if (sw1 && !sw2) {
+    lcd.clear();
+    lcd.setCursor(0, 0);
+    lcd.print("mode = 3");
+    delay(2000);
     mode = 2;
   } else if (!sw1 && sw2) {
+    lcd.clear();
+    lcd.setCursor(0, 0);
+    lcd.print("mode = 3");
+    delay(2000);
     mode = 1;
   } else {
+    lcd.clear();
+    lcd.setCursor(0, 0);
+    lcd.print("mode = 0. Standby");
+    delay(2000);
     mode = 0;
-    Serial.println("Mode is 0");
+    //Serial.println("Mode is 0");
   }
 
   Serial.println("waiting for user to return switches to off");
   while(digitalRead(SWITCH1) || digitalRead(SWITCH2)) {
     // wait
-    
+    lcd.clear();
+    lcd.setCursor(0, 0);
+    lcd.print("Return switches");
+    lcd.setCursor(0, 1);
+    lcd.print("to off position");
   }
   Serial.print("mode = ");Serial.println(mode);
 }
@@ -538,24 +575,24 @@ void updateDirection()
 void lineFollow()
 {
   if(angleCorrection==90){     
-     setMotorDirection(FWD,FWD);
-     drive(topSpeed, topSpeed);
+     setMotorDirection(REV ,REV);
+     drive(maxSpeed, maxSpeed);
     }
   if(angleCorrection==0){
-     setMotorDirection(FWD,FWD);
-     drive(topSpeed-150, topSpeed-50);
+     setMotorDirection(REV,REV);
+     drive(maxSpeed-110, maxSpeed-50);
     }
    if(angleCorrection==45){     
-     setMotorDirection(FWD,FWD);
-     drive(topSpeed-10, topSpeed-60);
+     setMotorDirection(REV,REV);
+     drive(maxSpeed-70, maxSpeed-10);
     }
   if(angleCorrection==135){     
-     setMotorDirection(FWD,FWD);
-     drive(topSpeed-60, topSpeed-10);
+     setMotorDirection(REV,REV);
+     drive(maxSpeed-10, maxSpeed-70);
     }
   if(angleCorrection==180){ 
-     setMotorDirection(FWD,FWD);
-     drive(topSpeed-50, topSpeed-150);
+     setMotorDirection(REV,REV);
+     drive(maxSpeed-50, maxSpeed-110);
     }
 }
 
@@ -566,7 +603,7 @@ void turnOffLCD() {
   lcd.updatePins(lcd5, LCD_ENABLE_PIN, lcd4, lcd3, lcd2, lcd1);
   lcd.begin(16,2);
   lcd.clear();
-  lcd.updatePins(8,7,6,5,4,3);
+  lcd.updatePins(0,0,0,0,0,0);
   pinMode(LCD_ENABLE_PIN, OUTPUT);
   digitalWrite(LCD_ENABLE_PIN, LOW);
 }
@@ -633,7 +670,7 @@ void readBLESerialAndDrive() {
 
       // we'll set the robot speed to be equal to its y coordinate in the app axes
       // and get the angle we want to drive at with tan^-1(y/x), saving it in degrees
-      int forwardSpeed = min(250, sqrt(pow(xCoordinate,2) + pow(yCoordinate,2))); 
+      int forwardSpeed = min(230, sqrt(pow(xCoordinate,2) + pow(yCoordinate,2))); 
       int robotAngle = 0;
       if (xCoordinate != 0) {
         robotAngle = (atan2((double) yCoordinate, (double) xCoordinate)) * (180 / PI); 
@@ -684,7 +721,14 @@ void updateLCD() {
 void displaySpeed() {
   lcd.setCursor(0,1);
   lcd.print("Speed is ");
-  float avgRPM = map((PMWDriveSignalLeft+PMWDriveSignalRight)/2.0, 70, 255, 0, 35);
-  lcd.print(avgRPM);  
-  lcd.print("RPM");
+  if (mode == 1) {
+    float avgRPM = map((PMWDriveSignalLeft+PMWDriveSignalRight)/2.0, 70, 255, 0, 35);
+    lcd.print(avgRPM);  
+    lcd.print("RPM");
+  } else if (mode == 2) {
+    float pf2speed = map(maxSpeed, 70, 255, 0, 35);
+    lcd.print(pf2speed);  
+    lcd.print("RPM");
+  }
+  
 }
