@@ -171,9 +171,9 @@ void configureMotorsForBLE(int motorSpeed, int angle) {
     // we should reverse, so take absolute value of motorSpeed
     // and reverse the enable bits on the wheels
     motorSpeed = -motorSpeed;
-    setMotorDirection(1,1);
-  } else {
     setMotorDirection(0,0);
+  } else {
+    setMotorDirection(1,1);
   }
 
 
@@ -181,28 +181,28 @@ void configureMotorsForBLE(int motorSpeed, int angle) {
     // drive in a straight line forwards (or backwards)
     drive(motorSpeed, motorSpeed);
     
-    //analogWrite(rightMotor, motorSpeed);
-    //analogWrite(leftMotor, motorSpeed);
-    Serial.print("right wheel: ");Serial.println(motorSpeed);
-    Serial.print("left wheel: ");Serial.println(motorSpeed);
+    analogWrite(rightMotor, motorSpeed);
+    analogWrite(leftMotor, motorSpeed);
+    //Serial.print("right wheel: ");Serial.println(motorSpeed);
+    //Serial.print("left wheel: ");Serial.println(motorSpeed);
   } else if (abs(angle) > FORWARD_ANGLE) {
     // desired turning angle is greater than forward angle, so turn left if going forward
     // or reverse to the left if moving backward
     drive(motorSpeed, (int) abs(motorSpeed * sin(angle * (PI / 180))));
     
-    //analogWrite(rightMotor, (int) abs(motorSpeed * sin(angle * (PI / 180))));
-   // analogWrite(leftMotor, motorSpeed);
-    Serial.print("left wheel: ");Serial.println((int) abs(motorSpeed * sin(angle * (PI / 180))));
-    Serial.print("right wheel: ");Serial.println(motorSpeed);
+    analogWrite(rightMotor, (int) abs(motorSpeed * sin(angle * (PI / 180))));
+    analogWrite(leftMotor, motorSpeed);
+    //Serial.print("left wheel: ");Serial.println((int) abs(motorSpeed * sin(angle * (PI / 180))));
+    //Serial.print("right wheel: ");Serial.println(motorSpeed);
   } else  {
     // desired turning angle is less than forward angle, so turn right if going forward
     // or reverse to the right if moving backward
     drive((int) abs(motorSpeed * sin(angle * (PI / 180))), motorSpeed);
     
-    //analogWrite(rightMotor, motorSpeed);
-    //analogWrite(leftMotor, (int) abs(motorSpeed * sin(angle * (PI / 180))));
-    Serial.print("left wheel: ");Serial.println(motorSpeed);
-    Serial.print("right wheel: ");Serial.println((int) abs(motorSpeed * sin(angle * (PI / 180))));
+    analogWrite(rightMotor, motorSpeed);
+    analogWrite(leftMotor, (int) abs(motorSpeed * sin(angle * (PI / 180))));
+    //Serial.print("left wheel: ");Serial.println(motorSpeed);
+    //Serial.print("right wheel: ");Serial.println((int) abs(motorSpeed * sin(angle * (PI / 180))));
   } 
 }
 

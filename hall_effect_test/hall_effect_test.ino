@@ -124,8 +124,8 @@ void setup()
   // set motor pinmodes
   pinMode(rightMotor, OUTPUT);
   pinMode(leftMotor, OUTPUT);
-  pinMode(enableRightMotor, OUTPUT);
-  pinMode(enableLeftMotor, OUTPUT);
+  //pinMode(enableRightMotor, OUTPUT);
+  //pinMode(enableLeftMotor, OUTPUT);
 
   // set up optical sensor pins
   pinMode(infraPins[0], INPUT);
@@ -138,7 +138,8 @@ void setup()
   pinMode(rightHallPin, INPUT_PULLUP);
     
   // acquire the mode from buttons 
-  acquireMode();
+  //acquireMode();
+  mode = BT;
   
   if(mode==BT){ // Bluetooth configuration
     xCoordinate = 0;
@@ -146,7 +147,6 @@ void setup()
     turnOffLCD();
     setupBLE();  
    } else { // LCD and rangefinder configuration
-    Serial.print("HELLO!!!!!!");
     lcd.updatePins(13, 8, 12, 11, 10, 9);
     lcd.begin(16,2);
     //set rangefinder pinmodes 
@@ -163,7 +163,6 @@ void setup()
 
 void loop()
 {
-  Serial.println("We're still connected");
   // check state of 2 buttons for 4 modes
   if (mode == PF1)
   {
@@ -260,9 +259,10 @@ void acquireMode()
     Serial.println("Mode is 0");
   }
 
+  Serial.println("waiting for user to return switches to off");
   while(digitalRead(SWITCH1) || digitalRead(SWITCH2)) {
     // wait
-    Serial.println("waiting for user to return switches to off");
+    
   }
   Serial.print("mode = ");Serial.println(mode);
 }
@@ -270,8 +270,17 @@ void acquireMode()
 // Sets motor direction
 void setMotorDirection(int left, int right)
 {
-  digitalWrite(rightMotor, right); 
-  digitalWrite(leftMotor, left); 
+  if (left) {
+    digitalWrite(leftMotor, FWD);   
+  } else {
+    digitalWrite(leftMotor, REV);   
+  }
+  
+  if (right) {
+   digitalWrite(rightMotor, FWD);  
+  } else {
+    digitalWrite(rightMotor, REV);
+  }
 }
 
 // check actual wheel speed and adjust power levels accordingly
@@ -398,6 +407,8 @@ void turnRight()
 // Motors read global speed/direction variables
 void drive(int leftSpeed, int rightSpeed)
 {
+  //Serial.print("leftSpeed: ");Serial.println(leftSpeed);
+  //Serial.print("rightSpeed: ");Serial.println(rightSpeed);
   analogWrite(enableLeftMotor, leftSpeed);
   analogWrite(enableRightMotor, rightSpeed);
 }
@@ -553,47 +564,55 @@ void readBLESerialAndDrive() {
 
       // we'll set the robot speed to be equal to its y coordinate in the app axes
       // and get the angle we want to drive at with tan^-1(y/x), saving it in degrees
-      int forwardSpeed = min(255, sqrt(pow(xCoordinate,2) + pow(yCoordinate,2))); 
-      int robotAngle = (atan2((double) yCoordinate, (double) xCoordinate)) * (180 / PI); 
-
+      int forwardSpeed = min(250, sqrt(pow(xCoordinate,2) + pow(yCoordinate,2))); 
+      int robotAngle = 0;
+      if (xCoordinate != 0) {
+        robotAngle = (atan2((double) yCoordinate, (double) xCoordinate)) * (180 / PI); 
+      }
+    
       // if the angle we should be driving at is within the error margin of 
       // our predefined forward angle, we should not turn and instead go in a straight line
       // otherwise turn
-      if (abs(abs(robotAngle) - FORWARD_ANGLE) <= JOYSTICK_ANGLE_MARGIN) {
-        configureMotorsForBLE(forwardSpeed, 0);
-      } else {
-        configureMotorsForBLE(forwardSpeed, robotAngle);
-      }
+      configureMotorsForBLE(forwardSpeed, robotAngle);
     }
 }
 
 void configureMotorsForBLE(int motorSpeed, int angle) {
-  if (motorSpeed < 0) {
+  
+  if (angle < 0) {
     // we should reverse, so take absolute value of motorSpeed
     // and reverse the enable bits on the wheels
     motorSpeed = -motorSpeed;
-    setMotorDirection(REV,REV);
+    setMotorDirection(0,0);
+    //Serial.println("angle: ");Serial.print(angle);
   } else {
-    setMotorDirection(FWD,FWD);
+    setMotorDirection(1,1);
+    //Serial.println("forward");
   }
-  Serial.print("motor speed: ");
-  Serial.println(motorSpeed);  
-  if (angle == 0) {
+  
+  if (abs(abs(angle) - FORWARD_ANGLE) <= JOYSTICK_ANGLE_MARGIN) {
+    //Serial.println("angle: ");Serial.print(angle);
     // drive in a straight line forwards (or backwards)
-    drive(motorSpeed, motorSpeed);
+    drive(abs(motorSpeed), abs(motorSpeed));
+    //analogWrite(rightMotor, motorSpeed);
+   // analogWrite(leftMotor, motorSpeed);
   } else if (abs(angle) > FORWARD_ANGLE) {
     // desired turning angle is greater than forward angle, so turn left if going forward
     // or reverse to the left if moving backward
-    drive(motorSpeed, (int) abs(motorSpeed * sin(angle * (PI / 180))));
+    drive((int) abs(motorSpeed * sin(angle * (PI / 180))), abs(motorSpeed));
+    //Serial.println("motorSpeed: ");
+    //Serial.println((int) abs(motorSpeed * sin(angle * (PI / 180))));
   } else  {
     // desired turning angle is less than forward angle, so turn right if going forward
     // or reverse to the right if moving backward
-    drive((int) abs(motorSpeed * sin(angle * (PI / 180))), motorSpeed);
+    drive(abs(motorSpeed), (int) abs(motorSpeed * sin(angle * (PI / 180))));
+    //Serial.println("motorSpeed: ");
+    //Serial.println((int) abs(motorSpeed * sin(angle * (PI / 180))));
   } 
 }
 
 /* Updates the LCD with current mode and speed values */
-void updateLCD(){
+void updateLCD() {
   lcd.setCursor(0, 0);
   lcd.print("Turtle in mode ");
   lcd.print(mode);
@@ -601,7 +620,7 @@ void updateLCD(){
 }
 
 /* Displays current speed to bottom row of LCD */
-void displaySpeed(){
+void displaySpeed() {
   lcd.setCursor(0,1);
   lcd.print("Speed is ");
   float avgRPM = map((PMWDriveSignalLeft+PMWDriveSignalRight)/2.0, 70, 255, 0, 35);
