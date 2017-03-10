@@ -463,7 +463,7 @@ void drive(int leftSpeed, int rightSpeed)
 }
 
 /*
- * Stops both motors from moving
+ * Stops both motors from spinning completely
  */
 void fullStop()
 {
@@ -478,7 +478,7 @@ void fullStop()
 }
 
 /*
- * Scans the line under the light sensors
+ * Scans the line under the light sensors and stores the line data
  */
 void lineScan()
 {   
@@ -533,7 +533,7 @@ void updateDirection()
 }
 
 /*
- * Function that follows a line
+ * Function that follows a line and updates direction based or the angles of the curves
  */
 void lineFollow()
 {
