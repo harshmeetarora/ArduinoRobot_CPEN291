@@ -29,9 +29,10 @@
 #define BT  3   // 3 for the remote control with the bluetooth application
 
 //Initialize the motor PWM speed control pins and constants
-#define enableRightMotor 5
-#define rightMotor 4
+#define enableRightMotor 5 // motor analog pins
 #define enableLeftMotor 6
+
+#define rightMotor 4 // motor direction (digital) pins
 #define leftMotor 7
 
 // define motor constants
@@ -63,15 +64,6 @@
 #define ADAFRUITBLE_RDY 2     // This should be an interrupt pin, on Uno thats #2 or #3
 #define ADAFRUITBLE_RST 9
 
-// initialize an lcd object
-LiquidCrystal lcd(0);
-
-// Constructing datatypes for App
-Adafruit_BLE_UART BTLEserial = Adafruit_BLE_UART(0);
-aci_evt_opcode_t laststatus = ACI_EVT_DISCONNECTED;
-
-// Optical Sensor Pins
-int infraPins[4] = {A1,A2,A3,A4};
  
 //Initialize the global variables: 
 int mode = 0; // mode variable
@@ -80,6 +72,10 @@ float distance; // distance read by the rangefinder
 int robotLinearSpeed = 0; // Desired linear speed of the robot
 float speedSlope = (topSpeed-minSpeed)/(MAXDISTANCE-MINDISTANCE);
 
+/****************** Optical Sensor Variables *********************/
+// Optical Sensor Pins
+int infraPins[4] = {A1,A2,A3,A4};
+
 // The following are for PF2:
 int infraSensorAnalog[4] = {0,0,0,0}; // Storing optical sensor values
 int infraSensorDigital[4] = {0,0,0,0};
@@ -87,32 +83,59 @@ int infraSensors = B0000;  // binary representation of sensors
 int angleCorrection = 0; // goes from 0 to 180, 90 is straight ahead
 int lastAngle = 0;  // Keep track of the optical sensors' last angle in case line is lost
 
-// For Hall-effect correction:
-float leftRPM;
-float rightRPM;
+
+//********************* Global Variables used for Hall Effect Readings ***********************/
+
+// flags indicating that this is the first reading when the wheels begin to move
 char firstReadingLeft;
 char firstReadingRight;
+
+// flag indicating that the old magnet on the given wheel has gone by
+// and that the new magnet is ready to appear
 char readyToReadRight = 1;
 char readyToReadLeft = 1;
+
+// time since last interrupt on the given wheel
 unsigned long lastInterruptRight = 0;
 unsigned long lastInterruptLeft = 0;
-int leftCorrectionOffset = 0;
-int rightCorrectionOffset = 0;
+
+// Flag indicating we received an updated speed value as 
+// a result of this reading
 char newLeftSpeedFlag = 1;
 char newRightSpeedFlag = 1;
+
 float tireSpeedLeft = 0.0;
 float tireSpeedRight = 0.0;
+
+// This is the speed that is mapped to a PWM value to 
+// control the wheels
 int controlSpeedRight = 0;
 int controlSpeedLeft = 0;
+
+// PWM value between 0 and 255 that is actually written to motors
 int PMWDriveSignalLeft;
 int PMWDriveSignalRight;
-float desiredSpeed = 55.0;
-float LrobotLinearSpeed;
-float RrobotLinearSpeed;
 
-// App Variables:
+// The speed the robot desires to go at, as a result of 
+// reading its surroundings
+float desiredSpeed = 55.0;
+
+
+/*********************** App Constants ***************************/
+// in-app user touch coordinates
 int xCoordinate;
 int yCoordinate;
+
+// Construct a datatype for the Bluetooth app, to be updated later with pins
+Adafruit_BLE_UART BTLEserial = Adafruit_BLE_UART(0);
+
+// initialize Bluetooth status to Disconnected
+aci_evt_opcode_t laststatus = ACI_EVT_DISCONNECTED;
+
+
+/********************* Shared Objects *****************************/
+// initialize an lcd object, to be updated later with pins
+LiquidCrystal lcd(0);
 
 //Initialize a servo motor object
 Servo servo;
@@ -160,7 +183,8 @@ void setup()
     pinMode(TRIG, OUTPUT);
     pinMode(ECHO, INPUT);
   }
-  
+
+  // initialize Hall effect flags
   firstReadingLeft = 1;
   firstReadingRight = 1;
 }
@@ -286,13 +310,13 @@ void acquireMode()
  */
 void setMotorDirection(int left, int right)
 {
-  if (left) {
+  if (left) { // left wheel should move forward
     digitalWrite(leftMotor, FWD);   
   } else {
     digitalWrite(leftMotor, REV);   
   }
   
-  if (right) {
+  if (right) { // left wheel should move forward
    digitalWrite(rightMotor, FWD);  
   } else {
     digitalWrite(rightMotor, REV);
@@ -304,6 +328,7 @@ void setMotorDirection(int left, int right)
  */
 void checkWheels() {
   double change; 
+  
   double intervalLeft = millis() - lastInterruptLeft;
   double intervalRight = millis() - lastInterruptRight;
   // we have not read an interrupt in 1.5 seconds, we are stopped!
@@ -626,30 +651,22 @@ void configureMotorsForBLE(int motorSpeed, int angle) {
     // and reverse the enable bits on the wheels
     motorSpeed = -motorSpeed;
     setMotorDirection(0,0);
-    //Serial.println("angle: ");Serial.print(angle);
   } else {
     setMotorDirection(1,1);
-    //Serial.println("forward");
   }
   
   if (abs(abs(angle) - FORWARD_ANGLE) <= JOYSTICK_ANGLE_MARGIN) {
     //Serial.println("angle: ");Serial.print(angle);
     // drive in a straight line forwards (or backwards)
     drive(abs(motorSpeed), abs(motorSpeed));
-    //analogWrite(rightMotor, motorSpeed);
-   // analogWrite(leftMotor, motorSpeed);
   } else if (abs(angle) > FORWARD_ANGLE) {
     // desired turning angle is greater than forward angle, so turn left if going forward
     // or reverse to the left if moving backward
     drive((int) abs(motorSpeed * sin(angle * (PI / 180))), abs(motorSpeed));
-    //Serial.println("motorSpeed: ");
-    //Serial.println((int) abs(motorSpeed * sin(angle * (PI / 180))));
   } else  {
     // desired turning angle is less than forward angle, so turn right if going forward
     // or reverse to the right if moving backward
     drive(abs(motorSpeed), (int) abs(motorSpeed * sin(angle * (PI / 180))));
-    //Serial.println("motorSpeed: ");
-    //Serial.println((int) abs(motorSpeed * sin(angle * (PI / 180))));
   } 
 }
 
