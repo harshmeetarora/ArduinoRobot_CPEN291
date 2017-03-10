@@ -10,7 +10,7 @@
 #include <LiquidCrystal.h>
 
 // define the pins for functionality 1
-#define SERVOPIN 2
+#define SERVOPIN 1
 #define TRIG 3
 #define ECHO A4
 
@@ -26,7 +26,7 @@
 #define OFF 0   // 0 is "off"
 #define PF1 1   // 1 for principle functionality 1
 #define PF2 2   // 2 for principle functionality 2
-#define BT  3    // 3 for the remote control with the bluetooth application
+#define BT  3   // 3 for the remote control with the bluetooth application
 
 //Initialize the motor PWM speed control pins and constants
 #define enableRightMotor 5
@@ -129,8 +129,6 @@ void setup()
   // set motor pinmodes
   pinMode(rightMotor, OUTPUT);
   pinMode(leftMotor, OUTPUT);
-  pinMode(enableRightMotor, OUTPUT);
-  pinMode(enableLeftMotor, OUTPUT);
   
   // set up optical sensor pins
   pinMode(infraPins[0], INPUT);
@@ -144,27 +142,21 @@ void setup()
     
   // acquire the mode from buttons 
   acquireMode();
-  
-  //attach the servo motor to its pin
-  servo.attach(SERVOPIN);
-  
-  //set initial direction of sevo
-  servo.write(90);
 
   // Bluetooth configuration (happens only when bluetooth is used
-  if(mode==BT)
-  { 
-    // initialize the coordinates of the application
+  if(mode==BT){ // Bluetooth configuration
     xCoordinate = 0;
     yCoordinate = 0;
     turnOffLCD();
     setupBLE();  
-   } 
-   else 
-   { // LCD and rangefinder configuration
+   } else { // LCD and rangefinder configuration
     lcd.updatePins(13, 8, 12, 11, 10, 9);
     lcd.begin(16,2);
     //set rangefinder pinmodes 
+    //attach the servo motor to its pin
+    servo.attach(SERVOPIN);
+    //set initial direction of sevo
+    servo.write(90);
     pinMode(TRIG, OUTPUT);
     pinMode(ECHO, INPUT);
   }
@@ -259,11 +251,34 @@ void functionality2()
  * 11b: mode 3 / 01b: mode 2 / 10b:mode 1 / 00b: stand-by mode (do nothing)
  */
 void acquireMode()
-{ /*
-  (SWITCH1 && SWITCH2) ? mode = 3 : SWITCH1 ? mode = 1 : 
-    SWITCH2 ? mode = 2 : mode = 0;
-   */ // Commented out just for testing
-   mode = PF1;
+{ 
+  // Commented out just for testing
+  Serial.println("Please enter a mode. 1 for PF1, 2 for PF2, 3 for BT");
+  while (!digitalRead(SWITCH1) && !digitalRead(SWITCH2)) {
+    
+  }
+
+  delay(2000);
+  int sw1 = digitalRead(SWITCH1);
+  int sw2 = digitalRead(SWITCH2);
+
+  if (sw1 && sw2) {
+    mode = 3;
+  } else if (sw1 && !sw2) {
+    mode = 2;
+  } else if (!sw1 && sw2) {
+    mode = 1;
+  } else {
+    mode = 0;
+    Serial.println("Mode is 0");
+  }
+
+  Serial.println("waiting for user to return switches to off");
+  while(digitalRead(SWITCH1) || digitalRead(SWITCH2)) {
+    // wait
+    
+  }
+  Serial.print("mode = ");Serial.println(mode);
 }
 
 /*
@@ -271,8 +286,17 @@ void acquireMode()
  */
 void setMotorDirection(int left, int right)
 {
-  digitalWrite(rightMotor, right); 
-  digitalWrite(leftMotor, left); 
+  if (left) {
+    digitalWrite(leftMotor, FWD);   
+  } else {
+    digitalWrite(leftMotor, REV);   
+  }
+  
+  if (right) {
+   digitalWrite(rightMotor, FWD);  
+  } else {
+    digitalWrite(rightMotor, REV);
+  }
 }
 
 /*
@@ -536,6 +560,7 @@ void setupBLE() {
 void updateBLE() {
   // Tell the nRF8001 to do whatever it should be working on.
   BTLEserial.pollACI();
+
   // Ask what is our current status
   aci_evt_opcode_t status = BTLEserial.getState();
   // If the status changed....
@@ -551,6 +576,96 @@ void updateBLE() {
         Serial.println(F("* Disconnected or advertising timed out"));
     }
     // OK set the last status change to this one
-    l
+    laststatus = status;
   }
+
+  if (status == ACI_EVT_CONNECTED) {
+    // Connected!
+    readBLESerialAndDrive();
+  }
+}
+
+void readBLESerialAndDrive() {
+  // Read every 4 values (negativeX, negativeY, x, y)
+  // the first 2 bytes sent over Bluetooth are flags indicating x and y should be read as negative  
+  // we save these flags in negativeX and negativeY
+  if (BTLEserial.available() == 4) {
+      int negativeX = BTLEserial.read();
+      int negativeY = BTLEserial.read();
+      
+      xCoordinate = BTLEserial.read();
+      yCoordinate = BTLEserial.read();
+        
+      if (negativeX) {
+        xCoordinate = -xCoordinate;
+      }  
+      
+      if (negativeY) {
+        yCoordinate = -yCoordinate;
+      }
+
+      // we'll set the robot speed to be equal to its y coordinate in the app axes
+      // and get the angle we want to drive at with tan^-1(y/x), saving it in degrees
+      int forwardSpeed = min(250, sqrt(pow(xCoordinate,2) + pow(yCoordinate,2))); 
+      int robotAngle = 0;
+      if (xCoordinate != 0) {
+        robotAngle = (atan2((double) yCoordinate, (double) xCoordinate)) * (180 / PI); 
+      }
+    
+      // if the angle we should be driving at is within the error margin of 
+      // our predefined forward angle, we should not turn and instead go in a straight line
+      // otherwise turn
+      configureMotorsForBLE(forwardSpeed, robotAngle);
+    }
+}
+
+void configureMotorsForBLE(int motorSpeed, int angle) {
+  
+  if (angle < 0) {
+    // we should reverse, so take absolute value of motorSpeed
+    // and reverse the enable bits on the wheels
+    motorSpeed = -motorSpeed;
+    setMotorDirection(0,0);
+    //Serial.println("angle: ");Serial.print(angle);
+  } else {
+    setMotorDirection(1,1);
+    //Serial.println("forward");
+  }
+  
+  if (abs(abs(angle) - FORWARD_ANGLE) <= JOYSTICK_ANGLE_MARGIN) {
+    //Serial.println("angle: ");Serial.print(angle);
+    // drive in a straight line forwards (or backwards)
+    drive(abs(motorSpeed), abs(motorSpeed));
+    //analogWrite(rightMotor, motorSpeed);
+   // analogWrite(leftMotor, motorSpeed);
+  } else if (abs(angle) > FORWARD_ANGLE) {
+    // desired turning angle is greater than forward angle, so turn left if going forward
+    // or reverse to the left if moving backward
+    drive((int) abs(motorSpeed * sin(angle * (PI / 180))), abs(motorSpeed));
+    //Serial.println("motorSpeed: ");
+    //Serial.println((int) abs(motorSpeed * sin(angle * (PI / 180))));
+  } else  {
+    // desired turning angle is less than forward angle, so turn right if going forward
+    // or reverse to the right if moving backward
+    drive(abs(motorSpeed), (int) abs(motorSpeed * sin(angle * (PI / 180))));
+    //Serial.println("motorSpeed: ");
+    //Serial.println((int) abs(motorSpeed * sin(angle * (PI / 180))));
+  } 
+}
+
+/* Updates the LCD with current mode and speed values */
+void updateLCD() {
+  lcd.setCursor(0, 0);
+  lcd.print("Turtle in mode ");
+  lcd.print(mode);
+  displaySpeed();
+}
+
+/* Displays current speed to bottom row of LCD */
+void displaySpeed() {
+  lcd.setCursor(0,1);
+  lcd.print("Speed is ");
+  float avgRPM = map((PMWDriveSignalLeft+PMWDriveSignalRight)/2.0, 70, 255, 0, 35);
+  lcd.print(avgRPM);  
+  lcd.print("RPM");
 }

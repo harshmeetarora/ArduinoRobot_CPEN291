@@ -235,11 +235,9 @@ void functionality2()
 
 // Reads 2 switches and sets mode accordingly
 void acquireMode()
-{ /*
-  (SWITCH1 && SWITCH2) ? mode = 3 : SWITCH1 ? mode = 1 : 
-    SWITCH2 ? mode = 2 : mode = 0;
-   */ // Commented out just for testing
-   Serial.println("Please enter a mode. 1 for PF1, 2 for PF2, 3 for BT");
+{ 
+  // Commented out just for testing
+  Serial.println("Please enter a mode. 1 for PF1, 2 for PF2, 3 for BT");
   while (!digitalRead(SWITCH1) && !digitalRead(SWITCH2)) {
     
   }
