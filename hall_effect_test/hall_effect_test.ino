@@ -11,7 +11,7 @@
 #include <LiquidCrystal.h>
 
 //The pins for functionality 1
-#define SERVOPIN 2
+#define SERVOPIN 1
 #define TRIG 3
 #define ECHO A4
 
@@ -138,8 +138,8 @@ void setup()
   pinMode(rightHallPin, INPUT_PULLUP);
     
   // acquire the mode from buttons 
-  //acquireMode();
-  mode = BT;
+  acquireMode();
+  //mode = BT;
   
   if(mode==BT){ // Bluetooth configuration
     xCoordinate = 0;
