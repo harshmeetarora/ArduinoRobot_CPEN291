@@ -10,7 +10,7 @@
 #include <LiquidCrystal.h>
 
 // define the pins for functionality 1
-#define SERVOPIN 1
+#define SERVOPIN 0
 #define TRIG 3
 #define ECHO A4
 
@@ -36,7 +36,7 @@
 #define leftMotor 7
 
 // define motor constants
-#define topSpeed 35.0
+#define topSpeed 45.0
 #define maxSpeed 152
 #define minSpeed 10.0 // TODO: Adjust this based on testing
 #define FWD LOW
@@ -144,7 +144,6 @@ Servo servo;
 void setup()
 {
   // start a serial connection
-  Serial.begin (9600);
 
   // set pinmodes for the switches
   pinMode(SWITCH1, INPUT);
@@ -169,20 +168,23 @@ void setup()
 
   // Bluetooth configuration (happens only when bluetooth is used
   if(mode==BT){ // Bluetooth configuration
+    Serial.begin (9600);
     xCoordinate = 0;
     yCoordinate = 0;
     turnOffLCD();
     setupBLE();  
    } else { // LCD and rangefinder configuration
+    if (mode == 1) {
+      servo.attach(SERVOPIN);
+      //set initial direction of sevo
+      servo.write(90);
+      pinMode(TRIG, OUTPUT);
+      pinMode(ECHO, INPUT);
+    }
     lcd.updatePins(13, 8, 12, 11, 10, 9);
     lcd.begin(16,2);
     //set rangefinder pinmodes 
     //attach the servo motor to its pin
-    servo.attach(SERVOPIN);
-    //set initial direction of sevo
-    servo.write(90);
-    pinMode(TRIG, OUTPUT);
-    pinMode(ECHO, INPUT);
   }
 
   // initialize Hall effect flags
@@ -257,7 +259,7 @@ void functionality1()
     firstReadingLeft = 1;
     firstReadingRight = 1;
   }
-  setMotorDirection(FWD,FWD);
+  setMotorDirection(REV,REV);
 }
 
 /*
@@ -285,13 +287,13 @@ void acquireMode()
   lcd.clear();
   lcd.setCursor(0, 0);
   lcd.print("Choose mode");
-  delay(3000);
+  delay(2000);
   lcd.clear();
   lcd.setCursor(0, 0);
   lcd.print("1 = PF1, 2 = PF2");
   lcd.setCursor(0,1);
   lcd.print("3 = BT");
-  delay(3000);
+  delay(2000);
   lcd.clear();
   lcd.setCursor(0, 0);
   lcd.print("waiting..");
@@ -303,43 +305,41 @@ void acquireMode()
   int sw1 = digitalRead(SWITCH1);
   int sw2 = digitalRead(SWITCH2);
 
+  lcd.clear();
+  lcd.setCursor(0, 0);
+  
   if (sw1 && sw2) {
-    lcd.clear();
-    lcd.setCursor(0, 0);
     lcd.print("mode = 3");
     delay(2000);
     mode = 3;
   } else if (sw1 && !sw2) {
-    lcd.clear();
-    lcd.setCursor(0, 0);
-    lcd.print("mode = 3");
+    lcd.print("mode = 2");
     delay(2000);
     mode = 2;
   } else if (!sw1 && sw2) {
-    lcd.clear();
-    lcd.setCursor(0, 0);
-    lcd.print("mode = 3");
+    lcd.print("mode = 1");
     delay(2000);
     mode = 1;
   } else {
-    lcd.clear();
-    lcd.setCursor(0, 0);
     lcd.print("mode = 0. Standby");
     delay(2000);
     mode = 0;
     //Serial.println("Mode is 0");
   }
 
-  Serial.println("waiting for user to return switches to off");
+  //Serial.println("waiting for user to return switches to off");
+  lcd.clear();
+  lcd.setCursor(0, 0);
+  lcd.print("Return switches");
+  lcd.setCursor(0, 1);
+  lcd.print("to off position");
   while(digitalRead(SWITCH1) || digitalRead(SWITCH2)) {
     // wait
-    lcd.clear();
-    lcd.setCursor(0, 0);
-    lcd.print("Return switches");
-    lcd.setCursor(0, 1);
-    lcd.print("to off position");
+    
   }
-  Serial.print("mode = ");Serial.println(mode);
+  lcd.clear();
+  lcd.setCursor(0, 0);
+  //Serial.print("mode = ");Serial.println(mode);
 }
 
 /*
@@ -720,15 +720,10 @@ void updateLCD() {
 /* Displays current speed to bottom row of LCD */
 void displaySpeed() {
   lcd.setCursor(0,1);
-  lcd.print("Speed is ");
   if (mode == 1) {
+    lcd.print("Speed is ");
     float avgRPM = map((PMWDriveSignalLeft+PMWDriveSignalRight)/2.0, 70, 255, 0, 35);
     lcd.print(avgRPM);  
     lcd.print("RPM");
-  } else if (mode == 2) {
-    float pf2speed = map(maxSpeed, 70, 255, 0, 35);
-    lcd.print(pf2speed);  
-    lcd.print("RPM");
   }
-  
 }
