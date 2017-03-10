@@ -20,8 +20,8 @@
 #define MINDISTANCE 10.0  // in cm
 
 // Switches for reading mode:
-#define SWITCH1 0   
-#define SWITCH2 1
+#define SWITCH1 3   
+#define SWITCH2 8
 
 // Modes: 
 #define OFF 0   // 0 is "off"
@@ -152,7 +152,7 @@ void loop()
   }
   else if (mode == BT)
   {
-    updateBLE();
+    functionality3();
   }
 }
 
@@ -203,7 +203,32 @@ void acquireMode()
   (SWITCH1 && SWITCH2) ? mode = 3 : SWITCH1 ? mode = 1 : 
     SWITCH2 ? mode = 2 : mode = 0;
    */ // Commented out just for testing
-   mode = PF1;
+  Serial.println("Please enter a mode. 1 for PF1, 2 for PF2, 3 for BT");
+  while (!digitalRead(SWITCH1) && !digitalRead(SWITCH2)) {
+    
+  }
+
+  delay(2000);
+  int sw1 = digitalRead(SWITCH1);
+  int sw2 = digitalRead(SWITCH2);
+
+  if (sw1 && sw2) {
+    mode = 3;
+  } else if (sw1 && !sw2) {
+    mode = 2;
+  } else if (!sw1 && sw2) {
+    mode = 1;
+  } else {
+    mode = 0;
+    Serial.println("Mode is 0");
+  }
+
+  while(digitalRead(SWITCH1) || digitalRead(SWITCH2)) {
+    // wait
+    Serial.println("waiting for user to return switches to off");
+  }
+  Serial.print("mode = ");Serial.println(mode);
+  
 }
 
 // Sets motor direction
@@ -373,7 +398,7 @@ void setupBLE() {
 /*
  * Moves according to commands sent from a bluetooth iOS application
  */
-void updateBLE() {
+void functionality3() {
   // Tell the nRF8001 to do whatever it should be working on.
   BTLEserial.pollACI();
 
