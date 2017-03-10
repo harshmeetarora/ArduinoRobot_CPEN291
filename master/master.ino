@@ -3,8 +3,12 @@
  * https://www.dfrobot.com/wiki/index.php/Arduino_Motor_Shield_(L298N)_(SKU:DRI0009)
  */
 
-//include the servo motor library 
+//include the libraries we need
 #include <Servo.h>
+#include <SPI.h>
+#include "Adafruit_BLE_UART.h"
+#include <math.h>
+#include <LiquidCrystal.h>
 
 //The pins for functionality 1
 #define SERVOPIN A0
@@ -31,39 +35,59 @@
 #define enableLeftMotor 6
 #define leftMotor 7
 #define topSpeed 255.0
-#define minSpeed 100.0 // TODO: Adjust based on testing
+#define minSpeed 100.0 // TODO: Adjust this based on testing
 #define FWD LOW
 #define REV HIGH
+#define maxRPM 60
 
 // Hall Effect Sensor Pins
 #define rightHallPin 2
 #define leftHallPin  3
 
 // LCD Pins
-#define lcdEnable 8
+#define LCD_ENABLE_PIN 8
 #define lcd1      9
 #define lcd2      10
 #define lcd3      11
 #define lcd4      12
 #define lcd5      13
 
+// App constants
+#define FORWARD_ANGLE 90 // 90 degrees is forward (corresponds to the y-axis in the app axes)
+#define JOYSTICK_ANGLE_MARGIN 5 // angle error margin (in degrees) 
+
+// Bluetooth Pins
+#define ADAFRUITBLE_REQ 10
+#define ADAFRUITBLE_RDY 2     // This should be an interrupt pin, on Uno thats #2 or #3
+#define ADAFRUITBLE_RST 9
+
+// Constructing datatypes for App
+LiquidCrystal lcd(0);
+Adafruit_BLE_UART BTLEserial = Adafruit_BLE_UART(0);
+aci_evt_opcode_t laststatus = ACI_EVT_DISCONNECTED;
+
 // Optical Sensor Pins
 int infraPins[4] = {A1,A2,A3,A4};
  
 //Initialize the global variables: 
+
 int mode = 0; // 4 modes
-int currentSpeed = 0; // For Hall-effect correction
 int pos; // servo arm angle
 float distance; // distance read by the rangefinder
 int robotLinearSpeed = 0; // Desired linear speed of the robot
 float speedSlope = (topSpeed-minSpeed)/(MAXDISTANCE-MINDISTANCE);
-int robotAngle;
 // The following are for PF2:
 int infraSensorAnalog[4] = {0,0,0,0}; // Storing optical sensor values
 int infraSensorDigital[4] = {0,0,0,0};
 int infraSensors = B0000;  // binary representation of sensors
 int angleCorrection = 0; // goes from 0 to 180, 90 is straight ahead
 int lastAngle = 0;  // Keep track of the optical sensors' last angle in case line is lost
+// For Hall-effect correction:
+float leftRPM;
+float rightRPM;
+// App Variables:
+int xCoordinate;
+int yCoordinate;
 
 //Initialize a servo motor object
 Servo servo;
@@ -100,10 +124,14 @@ void setup()
   // acquire the mode from buttons 
   acquireMode();
 
-  if(mode==BT){
-    // bluetooth pin configuration here
-  } else {
-    // LCD pin configuration here
+  if(mode==BT){ // Bluetooth configuration
+    xCoordinate = 0;
+    yCoordinate = 0;
+    turnOffLCD();
+    setupBLE();  
+   } else { // LCD configuration
+    lcd.updatePins(13, 8, 12, 11, 10, 9);
+    lcd.begin(16,2);
   }
 }
 
@@ -114,15 +142,17 @@ void loop()
   {
     functionality1();
     drive(robotLinearSpeed, robotLinearSpeed);
+    updateLCD(); 
   }
   else if (mode == PF2)
   {
     functionality2();
     lineFollow();
+    updateLCD(); 
   }
   else if (mode == BT)
   {
-    functionality3();
+    updateBLE();
   }
 }
 
@@ -136,11 +166,17 @@ void functionality1()
   distance = readDistance();
   if(distance>=MAXDISTANCE){
     robotLinearSpeed = topSpeed;
+    leftRPM = maxRPM;
+    rightRPM = maxRPM;
   } else { 
     robotLinearSpeed = speedSlope*(distance - MINDISTANCE);
+    leftRPM = map(robotLinearSpeed,minSpeed,topSpeed,0,maxRPM);
+    rightRPM = map(robotLinearSpeed,minSpeed,topSpeed,0,maxRPM);
   }
   if (robotLinearSpeed < 0.1){
     robotLinearSpeed = 0;
+    leftRPM = 0;
+    rightRPM = 0;
     fullStop();
     char newDirection = servoScan();
     Serial.println(newDirection);
@@ -161,20 +197,12 @@ void functionality2()
   lineFollow();
 }
 
-/*
- * Moves according to commands sent from a bluetooth iOS application
- */
-void functionality3()
-{
-  //add bluetooth functionality here
-}
-
 // Reads 2 switches and sets mode accordingly
 void acquireMode()
 { /*
   (SWITCH1 && SWITCH2) ? mode = 3 : SWITCH1 ? mode = 1 : 
     SWITCH2 ? mode = 2 : mode = 0;
-   */ // Commented out just for testing PF1
+   */ // Commented out just for testing
    mode = PF1;
 }
 
@@ -324,4 +352,128 @@ void lineFollow()
      setMotorDirection(FWD,FWD);
      drive(topSpeed-50, topSpeed-150);
     }
+}
+
+void turnOffLCD() {
+  lcd.updatePins(13, 8, 12, 11, 10, 9);
+  lcd.begin(16,2);
+  lcd.clear();
+  lcd.updatePins(8,7,6,5,4,3);
+  pinMode(LCD_ENABLE_PIN, OUTPUT);
+  digitalWrite(LCD_ENABLE_PIN, LOW);
+}
+
+void setupBLE() {
+  while(!Serial); // Leonardo/Micro should wait for serial init
+  Serial.println(F("Adafruit Bluefruit Low Energy nRF8001"));
+  BTLEserial.initWithPins(ADAFRUITBLE_REQ, ADAFRUITBLE_RDY, ADAFRUITBLE_RST);
+  BTLEserial.begin();
+}
+
+/*
+ * Moves according to commands sent from a bluetooth iOS application
+ */
+void updateBLE() {
+  // Tell the nRF8001 to do whatever it should be working on.
+  BTLEserial.pollACI();
+
+  // Ask what is our current status
+  aci_evt_opcode_t status = BTLEserial.getState();
+  // If the status changed....
+  if (status != laststatus) {
+    // print it out
+    if (status == ACI_EVT_DEVICE_STARTED) {
+        Serial.println(F("* Advertising started"));
+    }
+    if (status == ACI_EVT_CONNECTED) {
+        Serial.println(F("* Connected!"));
+    }
+    if (status == ACI_EVT_DISCONNECTED) {
+        Serial.println(F("* Disconnected or advertising timed out"));
+    }
+    // OK set the last status change to this one
+    laststatus = status;
+  }
+
+  if (status == ACI_EVT_CONNECTED) {
+    // Connected!
+    readBLESerialAndDrive();
+  }
+}
+
+void readBLESerialAndDrive() {
+  // Read every 4 values (negativeX, negativeY, x, y)
+  // the first 2 bytes sent over Bluetooth are flags indicating x and y should be read as negative  
+  // we save these flags in negativeX and negativeY
+  if (BTLEserial.available() == 4) {
+      int negativeX = BTLEserial.read();
+      int negativeY = BTLEserial.read();
+      
+      xCoordinate = BTLEserial.read();
+      yCoordinate = BTLEserial.read();
+        
+      if (negativeX) {
+        xCoordinate = -xCoordinate;
+      }  
+      
+      if (negativeY) {
+        yCoordinate = -yCoordinate;
+      }
+
+      // we'll set the robot speed to be equal to its y coordinate in the app axes
+      // and get the angle we want to drive at with tan^-1(y/x), saving it in degrees
+      int forwardSpeed = min(255, sqrt(pow(xCoordinate,2) + pow(yCoordinate,2))); 
+      int robotAngle = (atan2((double) yCoordinate, (double) xCoordinate)) * (180 / PI); 
+
+      // if the angle we should be driving at is within the error margin of 
+      // our predefined forward angle, we should not turn and instead go in a straight line
+      // otherwise turn
+      if (abs(abs(robotAngle) - FORWARD_ANGLE) <= JOYSTICK_ANGLE_MARGIN) {
+        configureMotorsForBLE(forwardSpeed, 0);
+      } else {
+        configureMotorsForBLE(forwardSpeed, robotAngle);
+      }
+    }
+}
+
+void configureMotorsForBLE(int motorSpeed, int angle) {
+  if (motorSpeed < 0) {
+    // we should reverse, so take absolute value of motorSpeed
+    // and reverse the enable bits on the wheels
+    motorSpeed = -motorSpeed;
+    setMotorDirection(REV,REV);
+  } else {
+    setMotorDirection(FWD,FWD);
+  }
+  Serial.print("motor speed: ");
+  Serial.println(motorSpeed);  
+  if (angle == 0) {
+    // drive in a straight line forwards (or backwards)
+    drive(motorSpeed, motorSpeed);
+  } else if (abs(angle) > FORWARD_ANGLE) {
+    // desired turning angle is greater than forward angle, so turn left if going forward
+    // or reverse to the left if moving backward
+    drive(motorSpeed, (int) abs(motorSpeed * sin(angle * (PI / 180))));
+  } else  {
+    // desired turning angle is less than forward angle, so turn right if going forward
+    // or reverse to the right if moving backward
+    drive((int) abs(motorSpeed * sin(angle * (PI / 180))), motorSpeed);
+  } 
+}
+
+/* Updates the LCD with current mode and speed values */
+void updateLCD(){
+  lcd.setCursor(0, 0);
+  lcd.print("Turtle in mode ");
+  lcd.print(mode);
+  displaySpeed();
+}
+
+/* Displays current speed to bottom row of LCD */
+void displaySpeed(){
+  lcd.setCursor(0,1);
+  lcd.print("Speed is ");
+  float avgRPM = (leftRPM+rightRPM)/2.0;
+  lcd.print(avgRPM);  
+  lcd.print("RPM");
 }
