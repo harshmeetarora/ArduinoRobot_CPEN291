@@ -20,8 +20,8 @@
 #define MINDISTANCE 10.0  // in cm
 
 // Switches for reading mode:
-#define SWITCH1 1   
-#define SWITCH2 3
+#define SWITCH1 3  
+#define SWITCH2 8
 
 // Modes: 
 #define OFF 0   // 0 is "off"
@@ -139,11 +139,6 @@ void setup()
     
   // acquire the mode from buttons 
   acquireMode();
-
-  //attach the servo motor to its pin
-  servo.attach(SERVOPIN);
-  //set initial direction of sevo
-  servo.write(90);
   
   if(mode==BT){ // Bluetooth configuration
     xCoordinate = 0;
@@ -151,9 +146,14 @@ void setup()
     turnOffLCD();
     setupBLE();  
    } else { // LCD and rangefinder configuration
+    Serial.print("HELLO!!!!!!");
     lcd.updatePins(13, 8, 12, 11, 10, 9);
     lcd.begin(16,2);
     //set rangefinder pinmodes 
+    //attach the servo motor to its pin
+    servo.attach(SERVOPIN);
+    //set initial direction of sevo
+    servo.write(90);
     pinMode(TRIG, OUTPUT);
     pinMode(ECHO, INPUT);
   }
@@ -163,6 +163,7 @@ void setup()
 
 void loop()
 {
+  Serial.println("We're still connected");
   // check state of 2 buttons for 4 modes
   if (mode == PF1)
   {
@@ -239,7 +240,31 @@ void acquireMode()
   (SWITCH1 && SWITCH2) ? mode = 3 : SWITCH1 ? mode = 1 : 
     SWITCH2 ? mode = 2 : mode = 0;
    */ // Commented out just for testing
-   mode = PF1;
+   Serial.println("Please enter a mode. 1 for PF1, 2 for PF2, 3 for BT");
+  while (!digitalRead(SWITCH1) && !digitalRead(SWITCH2)) {
+    
+  }
+
+  delay(2000);
+  int sw1 = digitalRead(SWITCH1);
+  int sw2 = digitalRead(SWITCH2);
+
+  if (sw1 && sw2) {
+    mode = 3;
+  } else if (sw1 && !sw2) {
+    mode = 2;
+  } else if (!sw1 && sw2) {
+    mode = 1;
+  } else {
+    mode = 0;
+    Serial.println("Mode is 0");
+  }
+
+  while(digitalRead(SWITCH1) || digitalRead(SWITCH2)) {
+    // wait
+    Serial.println("waiting for user to return switches to off");
+  }
+  Serial.print("mode = ");Serial.println(mode);
 }
 
 // Sets motor direction
