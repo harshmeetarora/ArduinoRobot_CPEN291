@@ -471,6 +471,8 @@ void fullStop()
   digitalWrite(rightMotor, LOW);
   analogWrite(enableLeftMotor, 0);
   analogWrite(enableRightMotor, 0);
+
+  // reset hall effect flags to recalibrate speed
   firstReadingRight = 1;
   firstReadingLeft = 1;
 }
